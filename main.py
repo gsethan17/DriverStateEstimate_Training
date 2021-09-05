@@ -134,8 +134,8 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
 
                 print('Train', i, temp_results['train_loss'][-1], temp_results['train_metric'][-1], end='\r')
 
-        results['train_loss'].append(sum(temp_results['train_loss'] / len(temp_results['train_loss'])))
-        results['train_metric'].append(sum(temp_results['train_metric'] / len(temp_results['train_metric'])))
+        results['train_loss'].append(sum(temp_results['train_loss']) / len(temp_results['train_loss']))
+        results['train_metric'].append(sum(temp_results['train_metric']) / len(temp_results['train_metric']))
         ed_train = time.time()
 
         for v, (_, val_x, val_y) in enumerate(val_dataloader) :
@@ -151,8 +151,8 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
 
                 print('Validation', v, temp_results['val_loss'][-1], temp_results['val_metric'][-1], end='\r')
 
-        results['val_loss'].append(sum(temp_results['val_loss'] / len(temp_results['val_loss'])))
-        results['val_metric'].append(sum(temp_results['val_metric'] / len(temp_results['val_metric'])))
+        results['val_loss'].append(sum(temp_results['val_loss']) / len(temp_results['val_loss']))
+        results['val_metric'].append(sum(temp_results['val_metric']) / len(temp_results['val_metric']))
         ed_val = time.time()
 
         print(
@@ -168,7 +168,7 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
         if results['val_metric'][-1] == max(results['val_metric']) :
             weights_path = os.path.join(save_path, 'weights')
             if not os.path.isdir(weights_path) :
-                os.mkdirs(weights_path)
+                os.makedirs(weights_path)
             cf_model.save_weights(os.path.join(save_path, 'weights', 'best@{}'.format(epoch)))
 
         if epoch > (patience - 1) and max(results['val_loss'][(-1 * (patience + 1)):]) == results['val_loss'][(-1 * (patience + 1))]:
@@ -240,7 +240,7 @@ def main(driver, odometer, data, batch_size, pre_sec, image_size, no_response, e
 if __name__ == '__main__' :
     gpu_limit(3)
 
-    epochs = 1
+    epochs = 100
     num_seq_img = 6
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
