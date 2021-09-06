@@ -8,8 +8,6 @@ from utils import get_feature, gpu_limit
 
 
 def train_fs(dataloader, epochs, num_seq_img, save_path) :
-    train_dataloader = iter(dataloader.get_train_data)
-    val_dataloader = iter(dataloader.get_valid_data)
 
     detector = face_detector('mmod', 0.5)
 
@@ -31,6 +29,9 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
 
     for epoch in range(epochs) :
         st_train = time.time()
+
+        train_dataloader = iter(dataloader.get_train_data)
+        val_dataloader = iter(dataloader.get_valid_data)
 
         temp_results = {}
         temp_results['train_loss'] = []
@@ -118,7 +119,7 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
             '''
             features, train_y = get_feature(i, detector, fe_model, train_x, train_y, num_seq_img)
 
-
+            print(train_x.shape, train_y.shape, features.shape)
             if not features.shape[0] == 0 :
                 # Training
                 with tf.GradientTape() as tape :
@@ -132,14 +133,23 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
                 temp_results['train_loss'].append(loss.numpy())
                 temp_results['train_metric'].append(metric.numpy())
 
-                print('Train', i, temp_results['train_loss'][-1], temp_results['train_metric'][-1], end='\r')
+                print('Train', i, temp_results['train_loss'][-1], temp_results['train_metric'][-1])
 
-        results['train_loss'].append(sum(temp_results['train_loss']) / len(temp_results['train_loss']))
-        results['train_metric'].append(sum(temp_results['train_metric']) / len(temp_results['train_metric']))
+        print(temp_results)
+        total_loss = sum(temp_results['train_loss'])
+        total_metric = sum(temp_results['train_metric'])
+        n_loss = len(temp_results['train_loss'])
+        n_metric = len(temp_results['train_metric'])
+        print(total_loss, n_loss, total_metric, n_metric)
+
+        results['train_loss'].append(total_loss / n_loss)
+        results['train_metric'].append(total_metric / n_metric)
         ed_train = time.time()
-
         for v, (_, val_x, val_y) in enumerate(val_dataloader) :
             val_features, val_y = get_feature(v, detector, fe_model, val_x, val_y, num_seq_img)
+
+            print(val_x.shape, val_y.shape, val_features.shape)
+
 
             if not val_features.shape[0] == 0 :
                 val_output = cf_model(val_features, training=False)
@@ -149,10 +159,18 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
                 temp_results['val_loss'].append(loss.numpy())
                 temp_results['val_metric'].append(metric.numpy())
 
-                print('Validation', v, temp_results['val_loss'][-1], temp_results['val_metric'][-1], end='\r')
+                print('Validation', v, temp_results['val_loss'][-1], temp_results['val_metric'][-1])
 
-        results['val_loss'].append(sum(temp_results['val_loss']) / len(temp_results['val_loss']))
-        results['val_metric'].append(sum(temp_results['val_metric']) / len(temp_results['val_metric']))
+
+        print(temp_results)
+        total_val_loss = sum(temp_results['val_loss'])
+        total_val_metric = sum(temp_results['val_metric'])
+        n_val_loss = len(temp_results['val_loss'])
+        n_val_metric = len(temp_results['val_metric'])
+        print(total_val_loss, n_val_loss, total_val_metric, n_val_metric)
+
+        results['val_loss'].append(total_val_loss / n_val_loss)
+        results['val_metric'].append(total_val_metric / n_val_metric)
         ed_val = time.time()
 
         print(
@@ -173,7 +191,6 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
 
         if epoch > (patience - 1) and max(results['val_loss'][(-1 * (patience + 1)):]) == results['val_loss'][(-1 * (patience + 1))]:
             break
-
         dataloader.shuffle_data()
 
     df = pd.DataFrame(results)
