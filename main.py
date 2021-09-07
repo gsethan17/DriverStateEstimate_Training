@@ -13,6 +13,9 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
 
     fe_model, cf_model = get_capnet(num_seq_img, 0.2)
 
+    # cf_model.load_weights(os.path.join(os.getcwd(), 'best'))
+    # print('###################')
+
     LOSS = tf.keras.losses.CategoricalCrossentropy()
     METRIC = tf.keras.metrics.CategoricalAccuracy()
     OPTIMIZER = tf.keras.optimizers.Adam()
@@ -189,7 +192,7 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
                 os.makedirs(weights_path)
             cf_model.save_weights(os.path.join(save_path, 'weights', 'best@{}'.format(epoch)))
 
-        if epoch > (patience - 1) and max(results['val_loss'][(-1 * (patience + 1)):]) == results['val_loss'][(-1 * (patience + 1))]:
+        if epoch > (patience - 1) and max(results['val_metric'][(-1 * (patience + 1)):]) == results['val_metric'][(-1 * (patience + 1))]:
             break
         dataloader.shuffle_data()
 
