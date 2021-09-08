@@ -18,7 +18,7 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
 
     LOSS = tf.keras.losses.CategoricalCrossentropy()
     METRIC = tf.keras.metrics.CategoricalAccuracy()
-    OPTIMIZER = tf.keras.optimizers.Adam()
+    OPTIMIZER = tf.keras.optimizers.Adam(learning_rate=0.01)
 
     patience = 10
 
@@ -264,8 +264,8 @@ if __name__ == '__main__' :
     num_seq_img = 6
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
-    driver = 'TaesanKim'
-    # driver = 'GeesungOh'
+    # driver = 'TaesanKim'
+    driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
     odometer = 500
