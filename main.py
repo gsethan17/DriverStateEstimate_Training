@@ -7,7 +7,7 @@ import tensorflow as tf
 from utils import get_feature, gpu_limit
 
 
-def train_fs(dataloader, epochs, num_seq_img, save_path) :
+def train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path) :
 
     detector = face_detector('mmod', 0.5)
 
@@ -18,7 +18,7 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
 
     LOSS = tf.keras.losses.CategoricalCrossentropy()
     METRIC = tf.keras.metrics.CategoricalAccuracy()
-    OPTIMIZER = tf.keras.optimizers.Adam(learning_rate=0.01)
+    OPTIMIZER = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
     patience = 10
 
@@ -43,83 +43,6 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
         temp_results['val_metric'] = []
 
         for i, (_, train_x, train_y) in enumerate(train_dataloader) :
-            '''
-            print(train_x.shape, train_y.shape)
-
-            batch_size = train_x.shape[0]
-            img_length = train_x.shape[1]
-
-            downsampling_rate = 10
-            num_seq_img = int(img_length/downsampling_rate)
-
-            # make train_input
-            # train_input = np.zeros((batch_size, num_seq_img, 224, 224, 3))
-            features = np.zeros((batch_size, num_seq_img, 512))
-
-            drop_count = 0
-
-            for b in range(batch_size) :
-
-                crop_list = {}
-                crop_list['exist'] = []
-                crop_list['img'] = []
-                crop_list['conf'] = []
-
-                for l in range(img_length) :
-                    rec, _ = detector.get_detection(train_x[b, l, :, :, :])
-                    exist, img, conf = crop_detection(train_x[b, l, :, :, :], rec)
-                    # img = np.resize(img, (224, 224, 3))
-                    if exist :
-                        img = cv2.resize(img, dsize=(224, 224), interpolation=cv2.INTER_AREA)
-                        cv2.imwrite('./images/{}_{}_{}.jpeg'.format(i, b, l), img)
-
-                    crop_list['exist'].append(exist)
-                    crop_list['img'].append(img)
-                    crop_list['conf'].append(conf)
-
-                b = b - drop_count
-
-                for j in range(num_seq_img) :
-                    ss_images = crop_list['img'][(i * 10):(i * 10) + 10]
-                    ss_scores = crop_list['conf'][(i * 10):(i * 10) + 10]
-                    ss_exist = crop_list['exist'][(i * 10):(i * 10) + 10]
-
-                    ss_image = []
-                    ss_score = []
-
-                    for t in range(len(ss_exist)) :
-                        if ss_exist[t] :
-                            ss_score.append(ss_scores[t])
-                            ss_image.append(ss_images[t])
-
-                    # print(b, i, sum(ss_exist))
-                    if sum(ss_exist) == 0 :
-                    # if sum(ss_scores) == 0 :
-                        # train_input = np.delete(train_input, [b], 0)
-                        print(crop_list['exist'])
-                        features = np.delete(features, [b], 0)
-                        train_y = np.delete(train_y, [b], 0)
-                        drop_count += 1
-                        break
-
-                    else :
-                        idx = ss_score.index(max(ss_score))
-                        input_img = ss_image[idx]
-                        # cv2.imwrite('./images/{}.jpeg'.format(num), input_img)
-                        # train_input[b, i, :, :, :] = input_img
-                        input_img = np.expand_dims(input_img, axis=0)
-                        feature = fe_model(input_img)
-                        features[b, j, :] = feature
-
-
-                print('####################################')
-                print('{}_{}_{}'.format(i, b, l))
-                print(features.shape)
-                print(train_y.shape)
-                print(drop_count)
-                print('####################################')
-                
-            '''
             features, train_y = get_feature(i, detector, fe_model, train_x, train_y, num_seq_img)
 
             print(train_x.shape, train_y.shape, features.shape)
@@ -190,7 +113,7 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
             weights_path = os.path.join(save_path, 'weights')
             if not os.path.isdir(weights_path) :
                 os.makedirs(weights_path)
-            cf_model.save_weights(os.path.join(save_path, 'weights', 'best@{}'.format(epoch)))
+            cf_model.save_weights(os.path.join(save_path, 'weights', 'best'))
 
         if epoch > (patience - 1) and max(results['val_metric'][(-1 * (patience + 1)):]) == results['val_metric'][(-1 * (patience + 1))]:
             break
@@ -199,42 +122,69 @@ def train_fs(dataloader, epochs, num_seq_img, save_path) :
     df = pd.DataFrame(results)
     df.to_csv(os.path.join(save_path, 'train_results.csv'), index=False)
 
-def test_fs(dataloader, save_path) :
+def test_fs(dataloader, num_seq_img, save_path) :
     detector = face_detector('mmod', 0.5)
 
     fe_model, cf_model = get_capnet(num_seq_img, 0.2)
 
     LOSS = tf.keras.losses.CategoricalCrossentropy()
     METRIC = tf.keras.metrics.CategoricalAccuracy()
-    weights_path = os.path.join(save_path, 'weights')
-    weights_path = os.path.join(weights_path, os.listdirpath.join(weights_path)[0])
 
+    results = {}
+    results['test_odo'] = []
+    results['test_loss'] = []
+    results['test_metric'] = []
+
+    # weights load
+    weights_path = os.path.join(save_path, 'weights', 'best')
     cf_model.load_weights(weights_path)
 
-    test_results = {}
-    test_results['loss'] = []
-    test_results['metric'] = []
+    n_tests, test_odos = dataloader.get_test_num()
 
-    for test_num in range(dataloader.get_test_num()) :
+    for test_num in range(n_tests) :
+        st_test = time.time()
+
+        temp_results = {}
+        temp_results['test_loss'] = []
+        temp_results['test_metric'] = []
 
         test_dataloader = dataloader.get_test_data(test_num+1)
 
         for i, (_, test_x, test_y) in enumerate(test_dataloader) :
-            print(test_x.shape, test_y.shape)
             test_features, test_y = get_feature(i, detector, fe_model, test_x, test_y, num_seq_img)
+            print(test_x.shape, test_features.shape, test_y.shape)
+
             if not test_features.shape[0] == 0 :
-                val_output = cf_model(test_features, training=False)
-                loss = LOSS(test_y, val_output)
-                metric = METRIC(test_y, val_output)
+                test_output = cf_model(test_features, training=False)
+                loss = LOSS(test_y, test_output)
+                metric = METRIC(test_y, test_output)
 
-                test_results['loss'].append(loss.numpy())
-                test_results['metric'].append(metric.numpy())
+                temp_results['loss'].append(loss.numpy())
+                temp_results['metric'].append(metric.numpy())
 
-    df = pd.DataFrame(test_results)
+        total_test_loss = sum(temp_results['loss'])
+        total_test_metric = sum(temp_results['metric'])
+        n_test_loss = len(temp_results['loss'])
+        n_test_metric = len(temp_results['metric'])
+        print(total_test_loss, n_test_loss, total_test_metric, n_test_metric)
+
+        results['test_odo'].append(test_odos[test_num])
+        results['test_loss'].append(total_test_loss / n_test_loss)
+        results['test_metric'].append(total_test_metric / n_test_metric)
+        ed_test = time.time()
+
+        print(
+            "{:>3} / {:>3} || test_loss:{:8.4f}, test_metric:{:8.4f} || TIME: Test {:8.1f}sec".format(
+                test_num + 1, n_tests,
+                results['test_loss'][-1],
+                results['test_metric'][-1],
+                (ed_test - st_test)))
+
+    df = pd.DataFrame(results)
     df.to_csv(os.path.join(save_path, 'test_results.csv'), index=False)
 
 
-def main(driver, odometer, data, batch_size, pre_sec, image_size, no_response, epochs, num_seq_img) :
+def main(driver, odometer, data, batch_size, learning_rate, pre_sec, image_size, no_response, epochs, num_seq_img) :
     data_path = os.path.join(os.getcwd(), 'nas_dms_dataset')
     dataloader = driving_mode_dataloader(
         dataset_path=data_path,
@@ -248,13 +198,13 @@ def main(driver, odometer, data, batch_size, pre_sec, image_size, no_response, e
         no_response=no_response,
     )
 
-    save_path = os.path.join(os.getcwd(), data, driver, str(odometer), 'CAPNet based')
+    save_path = os.path.join(os.getcwd(), data, driver, str(odometer), 'CAPNet based', str(learning_rate))
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
 
     if data == 'front_image' :
-        train_fs(dataloader, epochs, num_seq_img, save_path)
-        # test_fs(dataloader, num_seq_img, save_path)
+        # train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path)
+        test_fs(dataloader, num_seq_img, save_path)
 
 
 if __name__ == '__main__' :
@@ -275,6 +225,7 @@ if __name__ == '__main__' :
     # data = 'audio'
 
     batch_size = 16
+    learning_rate = 0.01
 
     pre_sec = 4
     image_size = 'large'
@@ -284,6 +235,7 @@ if __name__ == '__main__' :
          odometer,
          data,
          batch_size,
+         learning_rate,
          pre_sec,
          image_size,
          no_response,

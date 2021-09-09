@@ -359,7 +359,12 @@ class driving_mode_dataloader(tf.keras.utils.Sequence):
                     yield np.stack(x_list), np.stack(y_list)
 
     def get_test_num(self):
-        return len(self.test_data_list)
+        tmp = 0
+        test_km_list = []
+        for i in self.test_data_list:
+            tmp += self.get_data_km(i)
+            test_km_list.append(tmp)
+        return len(self.test_data_list), test_km_list
 
     def get_test_data(self, test_num):
         tmp_odd = self.test_data_list[0]
