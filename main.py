@@ -244,8 +244,8 @@ if __name__ == '__main__' :
     num_seq_img = 6
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
-    driver = 'TaesanKim'
-    # driver = 'GeesungOh'
+    # driver = 'TaesanKim'
+    driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
     odometer = 500
@@ -255,7 +255,7 @@ if __name__ == '__main__' :
     # data = 'audio'
 
     batch_size = 16
-    learning_rate = 0.001
+    learning_rate = 0.01
 
     pre_sec = 4
     image_size = 'large'
