@@ -145,8 +145,8 @@ def test_fs(dataloader, num_seq_img, save_path) :
         st_test = time.time()
 
         temp_results = {}
-        temp_results['test_loss'] = []
-        temp_results['test_metric'] = []
+        temp_results['loss'] = []
+        temp_results['metric'] = []
 
         test_dataloader = dataloader.get_test_data(test_num+1)
 
@@ -203,8 +203,8 @@ def main(driver, odometer, data, batch_size, learning_rate, pre_sec, image_size,
         os.makedirs(save_path)
 
     if data == 'front_image' :
-        # train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path)
-        test_fs(dataloader, num_seq_img, save_path)
+        train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path)
+        # test_fs(dataloader, num_seq_img, save_path)
 
 
 if __name__ == '__main__' :
@@ -214,8 +214,8 @@ if __name__ == '__main__' :
     num_seq_img = 6
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
-    # driver = 'TaesanKim'
-    driver = 'GeesungOh'
+    driver = 'TaesanKim'
+    # driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
     odometer = 500
