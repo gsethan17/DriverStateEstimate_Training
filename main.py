@@ -1,7 +1,8 @@
-from drivingmode_dataloader import driving_mode_dataloader
+from drivingmode_dataloader_v3 import driving_mode_dataloader
 import os
 import time
 import pandas as pd
+import numpy as np
 from dl_models import face_detector, get_capnet
 import tensorflow as tf
 from utils import get_feature, gpu_limit
@@ -131,6 +132,7 @@ def test_fs(dataloader, num_seq_img, save_path) :
     METRIC = tf.keras.metrics.CategoricalAccuracy()
 
     results = {}
+    results['name'] = []
     results['test_odo'] = []
     results['test_loss'] = []
     results['test_metric'] = []
@@ -139,7 +141,7 @@ def test_fs(dataloader, num_seq_img, save_path) :
     weights_path = os.path.join(save_path, 'weights', 'best')
     cf_model.load_weights(weights_path)
 
-    n_tests, test_odos = dataloader.get_test_num()
+    n_tests, test_odos, test_startodos = dataloader.get_test_num()
 
     for test_num in range(n_tests) :
         st_test = time.time()
@@ -148,11 +150,17 @@ def test_fs(dataloader, num_seq_img, save_path) :
         temp_results['loss'] = []
         temp_results['metric'] = []
 
-        test_dataloader = dataloader.get_test_data(test_num+1)
+        name = test_startodos[test_num]
 
-        for i, (_, test_x, test_y) in enumerate(test_dataloader) :
+        test_dataloader = dataloader.get_test_data(name)
+        # test_dataloader = dataloader.get_test_data(test_num+1)
+
+        flag = False
+
+        for i, ((_, test_x), test_y) in enumerate(test_dataloader) :
+            # print(i)
             test_features, test_y = get_feature(i, detector, fe_model, test_x, test_y, num_seq_img)
-            print(test_x.shape, test_features.shape, test_y.shape)
+            # print(test_x.shape, test_features.shape, test_y.shape)
 
             if not test_features.shape[0] == 0 :
                 test_output = cf_model(test_features, training=False)
@@ -162,12 +170,34 @@ def test_fs(dataloader, num_seq_img, save_path) :
                 temp_results['loss'].append(loss.numpy())
                 temp_results['metric'].append(metric.numpy())
 
+                if not flag :
+                    true = test_y
+                    pred = test_output.numpy()
+                    flag = True
+                    # print(true, pred)
+                else :
+                    true = np.concatenate((true, test_y), axis = 0)
+                    pred = np.concatenate((pred, test_output.numpy()), axis = 0)
+
+        save_results_path = os.path.join(save_path, 'test_results')
+        if not os.path.isdir(save_results_path):
+            os.makedirs(save_results_path)
+
+        np.save(os.path.join(save_results_path, '{}_{}_{}_true.npy'.format(
+            test_num+1, name, test_odos[test_num]
+        )), true)
+        np.save(os.path.join(save_results_path, '{}_{}_{}_pred.npy'.format(
+            test_num+1, name, test_odos[test_num]
+        )), pred)
+
+
         total_test_loss = sum(temp_results['loss'])
         total_test_metric = sum(temp_results['metric'])
         n_test_loss = len(temp_results['loss'])
         n_test_metric = len(temp_results['metric'])
-        print(total_test_loss, n_test_loss, total_test_metric, n_test_metric)
+        # print(total_test_loss, n_test_loss, total_test_metric, n_test_metric)
 
+        results['name'].append(name)
         results['test_odo'].append(test_odos[test_num])
         results['test_loss'].append(total_test_loss / n_test_loss)
         results['test_metric'].append(total_test_metric / n_test_metric)
@@ -203,8 +233,8 @@ def main(driver, odometer, data, batch_size, learning_rate, pre_sec, image_size,
         os.makedirs(save_path)
 
     if data == 'front_image' :
-        train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path)
-        # test_fs(dataloader, num_seq_img, save_path)
+        # train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path)
+        test_fs(dataloader, num_seq_img, save_path)
 
 
 if __name__ == '__main__' :
@@ -225,7 +255,7 @@ if __name__ == '__main__' :
     # data = 'audio'
 
     batch_size = 16
-    learning_rate = 0.01
+    learning_rate = 0.001
 
     pre_sec = 4
     image_size = 'large'
