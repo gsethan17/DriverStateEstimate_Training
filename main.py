@@ -43,7 +43,7 @@ def train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path) :
         temp_results['val_loss'] = []
         temp_results['val_metric'] = []
 
-        for i, (_, train_x, train_y) in enumerate(train_dataloader) :
+        for i, ((_, train_x), train_y) in enumerate(train_dataloader) :
             features, train_y = get_feature(i, detector, fe_model, train_x, train_y, num_seq_img)
 
             print(train_x.shape, train_y.shape, features.shape)
@@ -72,7 +72,7 @@ def train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path) :
         results['train_loss'].append(total_loss / n_loss)
         results['train_metric'].append(total_metric / n_metric)
         ed_train = time.time()
-        for v, (_, val_x, val_y) in enumerate(val_dataloader) :
+        for v, ((_, val_x), val_y) in enumerate(val_dataloader) :
             val_features, val_y = get_feature(v, detector, fe_model, val_x, val_y, num_seq_img)
 
             print(val_x.shape, val_y.shape, val_features.shape)
@@ -233,7 +233,7 @@ def main(driver, odometer, data, batch_size, learning_rate, pre_sec, image_size,
         os.makedirs(save_path)
 
     if data == 'front_image' :
-        # train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path)
+        train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path)
         test_fs(dataloader, num_seq_img, save_path)
 
 
@@ -244,8 +244,8 @@ if __name__ == '__main__' :
     num_seq_img = 6
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
-    # driver = 'TaesanKim'
-    driver = 'GeesungOh'
+    driver = 'TaesanKim'
+    # driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
     odometer = 500
@@ -255,7 +255,7 @@ if __name__ == '__main__' :
     # data = 'audio'
 
     batch_size = 16
-    learning_rate = 0.01
+    learning_rate = 0.001
 
     pre_sec = 4
     image_size = 'large'
