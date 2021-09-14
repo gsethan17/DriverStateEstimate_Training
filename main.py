@@ -266,7 +266,7 @@ def main(driver, odometer, data, batch_size, learning_rate, pre_sec, image_size,
 
 
 if __name__ == '__main__' :
-    gpu_limit(4)
+    gpu_limit(3)
 
     epochs = 101
     num_seq_img = 6
