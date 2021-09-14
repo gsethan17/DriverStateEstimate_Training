@@ -144,6 +144,8 @@ def test_fs(dataloader, num_seq_img, save_path) :
     n_tests, test_odos, test_startodos = dataloader.get_test_num()
 
     for test_num in range(n_tests) :
+        if test_num > 0 :
+            break
         st_test = time.time()
 
         temp_results = {}
@@ -233,7 +235,7 @@ def main(driver, odometer, data, batch_size, learning_rate, pre_sec, image_size,
         os.makedirs(save_path)
 
     if data == 'front_image' :
-        train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path)
+        # train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path)
         test_fs(dataloader, num_seq_img, save_path)
 
 
@@ -255,7 +257,7 @@ if __name__ == '__main__' :
     # data = 'audio'
 
     batch_size = 16
-    learning_rate = 0.001
+    learning_rate = 0.01
 
     pre_sec = 4
     image_size = 'large'
