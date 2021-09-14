@@ -7,8 +7,31 @@ from dl_models import face_detector, get_capnet
 import tensorflow as tf
 from utils import get_feature, gpu_limit
 
+def weighted_cross_entropy(true, pred, label_weight) :
+    n = true.shape[0]
 
-def train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path) :
+    nlls = []
+
+    for i in range(n) :
+        y = true[i]
+        idx = tf.argmax(y)
+
+        p = pred[i, idx]
+
+        nll = -tf.math.log(p)
+
+        weighted_nll = nll * label_weight[idx]
+
+        nlls.append(weighted_nll)
+
+    loss = tf.math.reduce_mean(nlls)
+
+    return loss
+
+
+
+
+def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path) :
 
     detector = face_detector('mmod', 0.5)
 
@@ -17,7 +40,8 @@ def train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path) :
     # cf_model.load_weights(os.path.join(os.getcwd(), 'best'))
     # print('###################')
 
-    LOSS = tf.keras.losses.CategoricalCrossentropy()
+    # LOSS = tf.keras.losses.CategoricalCrossentropy()
+    LOSS = weighted_cross_entropy
     METRIC = tf.keras.metrics.CategoricalAccuracy()
     OPTIMIZER = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
@@ -51,7 +75,7 @@ def train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path) :
                 # Training
                 with tf.GradientTape() as tape :
                     output = cf_model(features, training=True)
-                    loss = LOSS(train_y, output)
+                    loss = LOSS(train_y, output, label_weight)
                     metric = METRIC(train_y, output)
 
                 gradients = tape.gradient(loss, cf_model.trainable_variables)
@@ -80,7 +104,7 @@ def train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path) :
 
             if not val_features.shape[0] == 0 :
                 val_output = cf_model(val_features, training=False)
-                loss = LOSS(val_y, val_output)
+                loss = LOSS(val_y, val_output, label_weight)
                 metric = METRIC(val_y, val_output)
 
                 temp_results['val_loss'].append(loss.numpy())
@@ -120,8 +144,8 @@ def train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path) :
             break
         dataloader.shuffle_data()
 
-    df = pd.DataFrame(results)
-    df.to_csv(os.path.join(save_path, 'train_results.csv'), index=False)
+        df = pd.DataFrame(results)
+        df.to_csv(os.path.join(save_path, 'train_results.csv'), index=False)
 
 def test_fs(dataloader, num_seq_img, save_path) :
     detector = face_detector('mmod', 0.5)
@@ -230,24 +254,26 @@ def main(driver, odometer, data, batch_size, learning_rate, pre_sec, image_size,
         no_response=no_response,
     )
 
-    save_path = os.path.join(os.getcwd(), data, driver, str(odometer), 'CAPNet based', str(learning_rate))
+    (label_num, label_weight) = dataloader.get_label_weights()
+
+    save_path = os.path.join(os.getcwd(), data, driver, str(odometer), 'CAPNet_CW', str(learning_rate))
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
 
     if data == 'front_image' :
-        # train_fs(dataloader, epochs, learning_rate, num_seq_img, save_path)
+        train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path)
         test_fs(dataloader, num_seq_img, save_path)
 
 
 if __name__ == '__main__' :
-    gpu_limit(3)
+    gpu_limit(4)
 
-    epochs = 100
+    epochs = 101
     num_seq_img = 6
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
-    driver = 'TaesanKim'
-    # driver = 'GeesungOh'
+    # driver = 'TaesanKim'
+    driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
     odometer = 500
@@ -257,7 +283,7 @@ if __name__ == '__main__' :
     # data = 'audio'
 
     batch_size = 16
-    learning_rate = 0.01
+    learning_rate = 0.001
 
     pre_sec = 4
     image_size = 'large'
