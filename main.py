@@ -28,6 +28,17 @@ def weighted_cross_entropy(true, pred, label_weight) :
 
     return loss
 
+def weighted_loss(y_true, y_pred, weight_list):
+    cce = tf.keras.losses.CategoricalCrossentropy()
+    len_y = len(y_true)
+    if not len_y == len(y_pred):
+        raise ValueError(f"The length of y{len_y} and prediction{len(y_true)} is not same!")
+    total_loss = 0
+    for i in range(len_y):
+        tmp_loss = cce(y_pred[i], np.float32(y_true[i]))
+        total_loss += weight_list[np.argmax(y_true[i])] * tmp_loss
+    return total_loss / len_y
+
 
 
 
@@ -41,7 +52,8 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
     # print('###################')
 
     # LOSS = tf.keras.losses.CategoricalCrossentropy()
-    LOSS = weighted_cross_entropy
+    # LOSS = weighted_cross_entropy
+    LOSS = weighted_loss
     METRIC = tf.keras.metrics.CategoricalAccuracy()
     OPTIMIZER = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
@@ -168,8 +180,6 @@ def test_fs(dataloader, num_seq_img, save_path) :
     n_tests, test_odos, test_startodos = dataloader.get_test_num()
 
     for test_num in range(n_tests) :
-        if test_num > 0 :
-            break
         st_test = time.time()
 
         temp_results = {}
@@ -256,7 +266,7 @@ def main(driver, odometer, data, batch_size, learning_rate, pre_sec, image_size,
 
     (label_num, label_weight) = dataloader.get_label_weights()
 
-    save_path = os.path.join(os.getcwd(), data, driver, str(odometer), 'CAPNet_CW', str(learning_rate))
+    save_path = os.path.join(os.getcwd(), data, driver, str(odometer), 'CAPNet_CW_ES', str(learning_rate))
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
 
@@ -268,7 +278,7 @@ def main(driver, odometer, data, batch_size, learning_rate, pre_sec, image_size,
 if __name__ == '__main__' :
     gpu_limit(3)
 
-    epochs = 101
+    epochs = 100
     num_seq_img = 6
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
