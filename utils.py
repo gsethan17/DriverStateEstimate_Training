@@ -38,6 +38,8 @@ def get_feature(i, detector, fe_model, train_x, train_y, num_seq_img) :
             # img = np.resize(img, (224, 224, 3))
             if exist:
                 img = cv2.resize(img, dsize=(224, 224), interpolation=cv2.INTER_AREA)
+                # normalize
+                img = img / 255.
                 # cv2.imwrite('./images/{}_{}_{}.jpeg'.format(i, b, l), img)
 
             crop_list['exist'].append(exist)
