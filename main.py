@@ -266,7 +266,7 @@ def main(driver, odometer, data, batch_size, learning_rate, pre_sec, image_size,
 
     (label_num, label_weight) = dataloader.get_label_weights()
 
-    save_path = os.path.join(os.getcwd(), data, driver, str(odometer), 'CAPNet_CW', str(learning_rate))
+    save_path = os.path.join(os.getcwd(), data, driver, str(odometer), 'CAPNet_BN', str(learning_rate))
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
 
@@ -282,8 +282,8 @@ if __name__ == '__main__' :
     num_seq_img = 6
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
-    # driver = 'TaesanKim'
-    driver = 'GeesungOh'
+    driver = 'TaesanKim'
+    # driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
     odometer = 500

@@ -4,7 +4,7 @@ import time
 from FER_model.ResNet import ResNet34
 import tensorflow as tf
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, LSTM, Dense, Dropout
+from tensorflow.keras.layers import Input, LSTM, Dense, Dropout, BatchNormalization
 
 def get_capnet(num_seq_image, dropout_rate) :
     model = ResNet34(cardinality=32, se='parallel_add')
@@ -68,7 +68,8 @@ def get_capnet(num_seq_image, dropout_rate) :
 
 
     input_ = Input(shape=(num_seq_image, 512))
-    lstm = LSTM(256, input_shape=(num_seq_image, 512), dropout=dropout_rate)(input_)
+    bn = BatchNormalization()(input_)
+    lstm = LSTM(256, input_shape=(num_seq_image, 512), dropout=dropout_rate)(bn)
 
     do1 = Dropout(rate=dropout_rate)(lstm)
     fo1 = Dense(256, activation='tanh')(do1)
