@@ -55,7 +55,7 @@ def train_fs_e2e(dataloader, label_weight, epochs, learning_rate, num_seq_img, s
     METRIC = tf.keras.metrics.CategoricalAccuracy()
     OPTIMIZER = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
-    patience = 10
+    patience = 5
 
 
     results = {}
@@ -63,7 +63,7 @@ def train_fs_e2e(dataloader, label_weight, epochs, learning_rate, num_seq_img, s
     results['train_metric'] = []
     results['val_loss'] = []
     results['val_metric'] = []
-
+    results['val_acc'] = []
 
     for epoch in range(epochs) :
         st_train = time.time()
@@ -111,35 +111,51 @@ def train_fs_e2e(dataloader, label_weight, epochs, learning_rate, num_seq_img, s
 
             print(input_.shape, train_y.shape)
 
+            trues = np.array([], dtype='int64')
+            preds = np.array([], dtype='int64')
+
             if not val_input.shape[0] == 0 :
                 val_output = model(val_input, training=False)
                 loss = LOSS(val_y, val_output, label_weight)
                 metric = METRIC(val_y, val_output)
+
+                trues = np.concatenate([trues, np.argmax(val_y, axis=-1)], axis=0)
+                preds = np.concatenate([preds, np.argmax(val_output, axis=-1)], axis=0)
 
                 temp_results['val_loss'].append(loss.numpy())
                 temp_results['val_metric'].append(metric.numpy())
 
                 print('Validation', v, temp_results['val_loss'][-1], temp_results['val_metric'][-1])
 
+        tp = 0
+        for t in range(len(trues)):
+            true = trues[t]
+            pred = preds[t]
+            if true == pred:
+                tp += 1
 
-        print(temp_results)
+        acc = tp / len(trues)
+
+        # print(temp_results)
         total_val_loss = sum(temp_results['val_loss'])
         total_val_metric = sum(temp_results['val_metric'])
         n_val_loss = len(temp_results['val_loss'])
         n_val_metric = len(temp_results['val_metric'])
-        print(total_val_loss, n_val_loss, total_val_metric, n_val_metric)
+        print(total_val_loss, n_val_loss, total_val_metric, n_val_metric, acc)
 
         results['val_loss'].append(total_val_loss / n_val_loss)
         results['val_metric'].append(total_val_metric / n_val_metric)
+        results['val_acc'].append(acc)
         ed_val = time.time()
 
         print(
-            "{:>3} / {:>3} || train_loss:{:8.4f}, train_metric:{:8.4f}, val_loss:{:8.4f}, val_metric:{:8.4f} || TIME: Train {:8.1f}sec, Validation {:8.1f}sec".format(
-                epoch + 1, epochs,
+            "{:>3} / {:>3} || train_loss:{:8.4f}, train_metric:{:8.4f}, val_loss:{:8.4f}, val_metric:{:8.4f}, val_acc:{:8.4f} || TIME: Train {:8.1f}sec, Validation {:8.1f}sec".format(
+                    epoch + 1, epochs,
                 results['train_loss'][-1],
                 results['train_metric'][-1],
                 results['val_loss'][-1],
                 results['val_metric'][-1],
+                results['val_acc'][-1]
                 (ed_train - st_train),
                 (ed_val - ed_train)))
 
@@ -149,7 +165,7 @@ def train_fs_e2e(dataloader, label_weight, epochs, learning_rate, num_seq_img, s
                 os.makedirs(weights_path)
             model.save_weights(os.path.join(save_path, 'weights', 'best'))
 
-        if epoch > (patience - 1) and max(results['val_metric'][(-1 * (patience + 1)):]) == results['val_metric'][(-1 * (patience + 1))]:
+        if epoch > (patience - 1) and max(results['val_acc'][(-1 * (patience + 1)):]) == results['val_acc'][(-1 * (patience + 1))]:
             break
         dataloader.shuffle_data()
 
@@ -180,6 +196,7 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
     results['train_metric'] = []
     results['val_loss'] = []
     results['val_metric'] = []
+    results['val_acc'] = []
 
 
     for epoch in range(epochs) :
@@ -228,36 +245,52 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
 
             print(val_x.shape, val_y.shape, val_features.shape)
 
+            trues = np.array([], dtype='int64')
+            preds = np.array([], dtype='int64')
+
 
             if not val_features.shape[0] == 0 :
                 val_output = cf_model(val_features, training=False)
                 loss = LOSS(val_y, val_output, label_weight)
                 metric = METRIC(val_y, val_output)
 
+                trues = np.concatenate([trues, np.argmax(val_y, axis=-1)], axis=0)
+                preds = np.concatenate([preds, np.argmax(val_output, axis=-1)], axis=0)
+
                 temp_results['val_loss'].append(loss.numpy())
                 temp_results['val_metric'].append(metric.numpy())
 
                 print('Validation', v, temp_results['val_loss'][-1], temp_results['val_metric'][-1])
 
+        tp = 0
+        for t in range(len(trues)) :
+            true = trues[t]
+            pred = preds[t]
+            if true == pred :
+                tp += 1
 
-        print(temp_results)
+        acc = tp / len(trues)
+
+        # print(temp_results)
         total_val_loss = sum(temp_results['val_loss'])
         total_val_metric = sum(temp_results['val_metric'])
         n_val_loss = len(temp_results['val_loss'])
         n_val_metric = len(temp_results['val_metric'])
-        print(total_val_loss, n_val_loss, total_val_metric, n_val_metric)
+        print(total_val_loss, n_val_loss, total_val_metric, n_val_metric, acc)
 
         results['val_loss'].append(total_val_loss / n_val_loss)
         results['val_metric'].append(total_val_metric / n_val_metric)
+        results['val_acc'].append(acc)
         ed_val = time.time()
 
         print(
-            "{:>3} / {:>3} || train_loss:{:8.4f}, train_metric:{:8.4f}, val_loss:{:8.4f}, val_metric:{:8.4f} || TIME: Train {:8.1f}sec, Validation {:8.1f}sec".format(
+            "{:>3} / {:>3} || train_loss:{:8.4f}, train_metric:{:8.4f}, val_loss:{:8.4f}, val_metric:{:8.4f}, val_acc:{:8.4f} || TIME: Train {:8.1f}sec, Validation {:8.1f}sec".format(
                 epoch + 1, epochs,
                 results['train_loss'][-1],
                 results['train_metric'][-1],
                 results['val_loss'][-1],
                 results['val_metric'][-1],
+                results['val_acc'][-1]
                 (ed_train - st_train),
                 (ed_val - ed_train)))
 
@@ -267,7 +300,7 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
                 os.makedirs(weights_path)
             cf_model.save_weights(os.path.join(save_path, 'weights', 'best'))
 
-        if epoch > (patience - 1) and max(results['val_metric'][(-1 * (patience + 1)):]) == results['val_metric'][(-1 * (patience + 1))]:
+        if epoch > (patience - 1) and max(results['val_acc'][(-1 * (patience + 1)):]) == results['val_acc'][(-1 * (patience + 1))]:
             break
         dataloader.shuffle_data()
 
@@ -310,9 +343,9 @@ def test_fs_e2e(dataloader, num_seq_img, save_path) :
 
         for i, ((_, test_x), test_y) in enumerate(test_dataloader) :
             # print(i)
-            test_input, train_y = get_input(detector, test_x, test_y, num_seq_img)
+            test_input, test_y = get_input(detector, test_x, test_y, num_seq_img)
 
-            print(test_input.shape, train_y.shape)
+            print(test_input.shape, test_y.shape)
 
             if not test_input.shape[0] == 0 :
                 test_output = model(test_input, training=False)
@@ -488,7 +521,7 @@ def main(modelkey, driver, odometer, data, batch_size, learning_rate, pre_sec, i
 if __name__ == '__main__' :
     gpu_limit(5)
 
-    epochs = 1
+    epochs = 100
     num_seq_img = 6
 
     # modelkey = 'CAPNet_BN'
