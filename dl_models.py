@@ -28,7 +28,7 @@ def get_mobilenet(num_seq_image, dropout_rate=0.001) :
                  dropout=dropout_rate)(output_)
     lstm2 = LSTM(256, dropout=dropout_rate)(lstm1)
 
-    fo2 = Dense(4, activation='tanh')(lstm2)
+    fo2 = Dense(4, activation='softmax')(lstm2)
 
     model = Model(inputs=input_, outputs=fo2)
 
