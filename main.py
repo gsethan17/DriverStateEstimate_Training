@@ -532,7 +532,7 @@ if __name__ == '__main__' :
     driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
-    odometer = 100
+    odometer = 300
 
     # ['can', 'front_image', 'side_image', 'bio', 'audio']
     data = 'front_image'
