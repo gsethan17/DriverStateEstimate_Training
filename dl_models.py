@@ -6,9 +6,13 @@ import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, LSTM, Dense, Dropout, BatchNormalization
 from tensorflow.keras.applications.mobilenet import MobileNet
+from tensorflow.keras.applications.resnet50 import ResNet50
 
-def get_mobilenet(num_seq_image, dropout_rate=0.001) :
-    base_model = MobileNet(include_top=False, pooling='avg')
+def get_application(modelkey, num_seq_image, dropout_rate=0.001) :
+    if modelkey == 'mobilenet' :
+        base_model = MobileNet(include_top=False, pooling='avg')
+    elif modelkey == 'resnet' :
+        base_model = ResNet50(include_top=False, pooling = 'avg')
 
     input_ = Input(shape=(num_seq_image, 224, 224, 3))
 

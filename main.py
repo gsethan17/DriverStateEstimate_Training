@@ -3,7 +3,7 @@ import os
 import time
 import pandas as pd
 import numpy as np
-from dl_models import face_detector, get_capnet, get_mobilenet
+from dl_models import face_detector, get_capnet, get_application
 import tensorflow as tf
 from utils import get_feature, gpu_limit, get_input
 
@@ -40,11 +40,11 @@ def weighted_loss(y_true, y_pred, weight_list):
     return total_loss / len_y
 
 
-def train_fs_e2e(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path) :
+def train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path) :
 
     detector = face_detector('mmod', 0.5)
 
-    model = get_mobilenet(num_seq_img)
+    model = get_application(modelkey, num_seq_img)
 
     # cf_model.load_weights(os.path.join(os.getcwd(), 'best'))
     # print('###################')
@@ -307,10 +307,10 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
         df = pd.DataFrame(results)
         df.to_csv(os.path.join(save_path, 'train_results.csv'), index=False)
 
-def test_fs_e2e(dataloader, num_seq_img, save_path) :
+def test_fs_e2e(modelkey, dataloader, num_seq_img, save_path) :
     detector = face_detector('mmod', 0.5)
 
-    model = get_mobilenet(num_seq_img)
+    model = get_application(modelkey, num_seq_img)
 
     LOSS = tf.keras.losses.CategoricalCrossentropy()
     METRIC = tf.keras.metrics.CategoricalAccuracy()
@@ -489,7 +489,7 @@ def test_fs(dataloader, num_seq_img, save_path) :
     df.to_csv(os.path.join(save_path, 'test_results.csv'), index=False)
 
 
-def main(modelkey, driver, odometer, data, batch_size, learning_rate, pre_sec, image_size, no_response, epochs, num_seq_img) :
+def main(applications, modelkey, driver, odometer, data, batch_size, learning_rate, pre_sec, image_size, no_response, epochs, num_seq_img) :
     data_path = os.path.join(os.getcwd(), 'nas_dms_dataset')
     dataloader = driving_mode_dataloader(
         dataset_path=data_path,
@@ -510,9 +510,9 @@ def main(modelkey, driver, odometer, data, batch_size, learning_rate, pre_sec, i
         os.makedirs(save_path)
 
     if data == 'front_image' :
-        if modelkey == 'mobilenet' :
-            train_fs_e2e(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path)
-            test_fs_e2e(dataloader, num_seq_img, save_path)
+        if modelkey in applications :
+            train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path)
+            test_fs_e2e(modelkey, dataloader, num_seq_img, save_path)
         else :
             train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path)
             test_fs(dataloader, num_seq_img, save_path)
@@ -524,28 +524,32 @@ if __name__ == '__main__' :
     epochs = 100
     num_seq_img = 6
 
+    applications = ['mobilenet', 'resnet']
+
     # modelkey = 'CAPNet_BN'
-    modelkey = 'mobilenet'
+    # modelkey = 'mobilenet'
+    modelkey = applications[1]
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
     driver = 'TaesanKim'
     # driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
-    odometer = 800
+    odometer = 500
 
     # ['can', 'front_image', 'side_image', 'bio', 'audio']
     data = 'front_image'
     # data = 'audio'
 
     batch_size = 16
-    learning_rate = 0.005
+    learning_rate = 0.001
 
     pre_sec = 4
     image_size = 'large'
     no_response='ignore'
 
-    main(modelkey,
+    main(applications,
+         modelkey,
          driver,
          odometer,
          data,
