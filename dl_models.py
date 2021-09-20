@@ -24,10 +24,11 @@ def get_mobilenet(num_seq_image, dropout_rate=0.001) :
             out_3 = tf.expand_dims(out_, axis=1)
             output_ = tf.concat([output_, out_3], axis=1)
 
-    lstm = LSTM(256, input_shape=(num_seq_image, output_.shape[-1]), dropout=dropout_rate)(output_)
+    lstm1 = LSTM(256, input_shape=(num_seq_image, output_.shape[-1]), return_sequences=True,
+                 dropout=dropout_rate)(output_)
+    lstm2 = LSTM(256, dropout=dropout_rate)(lstm1)
 
-    fo1 = Dense(256, activation='relu')(lstm)
-    fo2 = Dense(2, activation='tanh')(fo1)
+    fo2 = Dense(4, activation='tanh')(lstm2)
 
     model = Model(inputs=input_, outputs=fo2)
 
