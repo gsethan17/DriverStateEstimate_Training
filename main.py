@@ -96,7 +96,7 @@ def train_fs_e2e(dataloader, label_weight, epochs, learning_rate, num_seq_img, s
 
                 print('Train', i, temp_results['train_loss'][-1], temp_results['train_metric'][-1])
 
-        print(temp_results)
+        # print(temp_results)
         total_loss = sum(temp_results['train_loss'])
         total_metric = sum(temp_results['train_metric'])
         n_loss = len(temp_results['train_loss'])
@@ -521,7 +521,7 @@ def main(modelkey, driver, odometer, data, batch_size, learning_rate, pre_sec, i
 if __name__ == '__main__' :
     gpu_limit(5)
 
-    epochs = 1
+    epochs = 100
     num_seq_img = 6
 
     # modelkey = 'CAPNet_BN'
@@ -532,14 +532,14 @@ if __name__ == '__main__' :
     driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
-    odometer = 300
+    odometer = 500
 
     # ['can', 'front_image', 'side_image', 'bio', 'audio']
     data = 'front_image'
     # data = 'audio'
 
     batch_size = 16
-    learning_rate = 0.001
+    learning_rate = 0.005
 
     pre_sec = 4
     image_size = 'large'
