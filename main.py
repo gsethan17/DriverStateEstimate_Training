@@ -486,9 +486,9 @@ def main(modelkey, driver, odometer, data, batch_size, learning_rate, pre_sec, i
 
 
 if __name__ == '__main__' :
-    gpu_limit(3)
+    gpu_limit(5)
 
-    epochs = 100
+    epochs = 1
     num_seq_img = 6
 
     # modelkey = 'CAPNet_BN'
