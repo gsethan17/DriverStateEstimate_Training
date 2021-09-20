@@ -521,18 +521,18 @@ def main(modelkey, driver, odometer, data, batch_size, learning_rate, pre_sec, i
 if __name__ == '__main__' :
     gpu_limit(5)
 
-    epochs = 100
+    epochs = 1
     num_seq_img = 6
 
     # modelkey = 'CAPNet_BN'
     modelkey = 'mobilenet'
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
-    driver = 'TaesanKim'
-    # driver = 'GeesungOh'
+    # driver = 'TaesanKim'
+    driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
-    odometer = 500
+    odometer = 100
 
     # ['can', 'front_image', 'side_image', 'bio', 'audio']
     data = 'front_image'
