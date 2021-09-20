@@ -519,7 +519,7 @@ def main(applications, modelkey, driver, odometer, data, batch_size, learning_ra
 
 
 if __name__ == '__main__' :
-    gpu_limit(5)
+    gpu_limit(6)
 
     epochs = 100
     num_seq_img = 6
