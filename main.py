@@ -259,7 +259,7 @@ def main(driver, odometer, data, batch_size, learning_rate, pre_sec, image_size,
         data=data,
         pre_sec=pre_sec,
         batch_size=batch_size,
-        valid_ratio=0.2,
+        valid_ratio=0.3,
         image_size=image_size,
         no_response=no_response,
     )
@@ -286,14 +286,14 @@ if __name__ == '__main__' :
     # driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
-    odometer = 500
+    odometer = 800
 
     # ['can', 'front_image', 'side_image', 'bio', 'audio']
     data = 'front_image'
     # data = 'audio'
 
     batch_size = 16
-    learning_rate = 0.001
+    learning_rate = 0.005
 
     pre_sec = 4
     image_size = 'large'

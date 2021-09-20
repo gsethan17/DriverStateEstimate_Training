@@ -5,6 +5,35 @@ from FER_model.ResNet import ResNet34
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, LSTM, Dense, Dropout, BatchNormalization
+from tensorflow.keras.applications.mobilenet import MobileNet
+
+def get_mobilenet(num_seq_image, dropout_rate=0.001) :
+    base_model = MobileNet(include_top=False, pooling='avg')
+
+    input_ = Input(shape=(num_seq_image, 224, 224, 3))
+
+    for i in range(num_seq_image):
+        out_ = base_model(input_[:, i, :, :, :])
+
+        if i == 0:
+            out_0 = tf.expand_dims(out_, axis=1)
+        elif i == 1:
+            out_1 = tf.expand_dims(out_, axis=1)
+            output_ = tf.concat([out_0, out_1], axis=1)
+        else:
+            out_3 = tf.expand_dims(out_, axis=1)
+            output_ = tf.concat([output_, out_3], axis=1)
+
+    lstm = LSTM(256, input_shape=(num_seq_image, output_.shape[-1]), dropout=dropout_rate)(output_)
+
+    fo1 = Dense(256, activation='relu')(lstm)
+    fo2 = Dense(2, activation='tanh')(fo1)
+
+    model = Model(inputs=input_, outputs=fo2)
+
+    return model
+
+
 
 def get_capnet(num_seq_image, dropout_rate) :
     model = ResNet34(cardinality=32, se='parallel_add')
@@ -153,7 +182,11 @@ def crop_detection(img, rectangles):
 if __name__ == '__main__' :
     num_seq_image = 6
     dropout_rate = 0.2
-    fe_model, ce_model = get_capnet(num_seq_image, dropout_rate)
 
-    print(fe_model.summary())
-    print(ce_model.summary())
+    model = get_mobilenet((num_seq_image))
+    print(model.summary())
+
+    # fe_model, ce_model = get_capnet(num_seq_image, dropout_rate)
+    #
+    # print(fe_model.summary())
+    # print(ce_model.summary())
