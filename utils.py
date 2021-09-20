@@ -76,7 +76,7 @@ def get_input(detector, train_x, train_y, num_seq_img) :
                 # cv2.imwrite('./images/{}.jpeg'.format(num), input_img)
                 # train_input[b, i, :, :, :] = input_img
                 input_img = np.expand_dims(input_img, axis=0)
-                input_[b, j, :] = input_
+                input_[b, j, :] = input_img
         '''
         print('####################################')
         print('{}_{}_{}'.format(i, b, l))
