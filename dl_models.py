@@ -188,7 +188,7 @@ if __name__ == '__main__' :
     num_seq_image = 6
     dropout_rate = 0.2
 
-    model = get_mobilenet((num_seq_image))
+    model = get_application('resnet', num_seq_image)
     print(model.summary())
 
     # fe_model, ce_model = get_capnet(num_seq_image, dropout_rate)
