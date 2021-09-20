@@ -155,7 +155,7 @@ def train_fs_e2e(dataloader, label_weight, epochs, learning_rate, num_seq_img, s
                 results['train_metric'][-1],
                 results['val_loss'][-1],
                 results['val_metric'][-1],
-                results['val_acc'][-1]
+                results['val_acc'][-1],
                 (ed_train - st_train),
                 (ed_val - ed_train)))
 
@@ -290,7 +290,7 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
                 results['train_metric'][-1],
                 results['val_loss'][-1],
                 results['val_metric'][-1],
-                results['val_acc'][-1]
+                results['val_acc'][-1],
                 (ed_train - st_train),
                 (ed_val - ed_train)))
 
