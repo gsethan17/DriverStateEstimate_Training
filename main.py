@@ -49,7 +49,7 @@ def train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_
     # cf_model.load_weights(os.path.join(os.getcwd(), 'best'))
     # print('###################')
 
-    # LOSS = tf.keras.losses.CategoricalCrossentropy()
+    VAL_LOSS = tf.keras.losses.CategoricalCrossentropy()
     LOSS = weighted_cross_entropy
     # LOSS = weighted_loss
     METRIC = tf.keras.metrics.CategoricalAccuracy()
@@ -116,7 +116,7 @@ def train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_
 
             if not val_input.shape[0] == 0 :
                 val_output = model(val_input, training=False)
-                loss = LOSS(val_y, val_output, label_weight)
+                loss = VAL_LOSS(val_y, val_output, label_weight)
                 metric = METRIC(val_y, val_output)
 
                 trues = np.concatenate([trues, np.argmax(val_y, axis=-1)], axis=0)
@@ -182,7 +182,7 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
     # cf_model.load_weights(os.path.join(os.getcwd(), 'best'))
     # print('###################')
 
-    # LOSS = tf.keras.losses.CategoricalCrossentropy()
+    VAL_LOSS = tf.keras.losses.CategoricalCrossentropy()
     LOSS = weighted_cross_entropy
     # LOSS = weighted_loss
     METRIC = tf.keras.metrics.CategoricalAccuracy()
@@ -251,7 +251,7 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
 
             if not val_features.shape[0] == 0 :
                 val_output = cf_model(val_features, training=False)
-                loss = LOSS(val_y, val_output, label_weight)
+                loss = VAL_LOSS(val_y, val_output, label_weight)
                 metric = METRIC(val_y, val_output)
 
                 trues = np.concatenate([trues, np.argmax(val_y, axis=-1)], axis=0)
@@ -519,16 +519,16 @@ def main(applications, modelkey, driver, odometer, data, batch_size, learning_ra
 
 
 if __name__ == '__main__' :
-    gpu_limit(6)
+    gpu_limit(3)
 
     epochs = 100
     num_seq_img = 6
 
     applications = ['mobilenet', 'resnet']
 
-    # modelkey = 'CAPNet_BN'
+    modelkey = 'CAPNet'
     # modelkey = 'mobilenet'
-    modelkey = applications[1]
+    # modelkey = applications[1]
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
     driver = 'TaesanKim'
