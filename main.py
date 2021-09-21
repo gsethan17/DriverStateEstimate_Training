@@ -116,7 +116,8 @@ def train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_
 
             if not val_input.shape[0] == 0 :
                 val_output = model(val_input, training=False)
-                loss = VAL_LOSS(val_y, val_output, label_weight)
+                # loss = LOSS(val_y, val_output, label_weight)
+                loss = VAL_LOSS(val_y, val_output)
                 metric = METRIC(val_y, val_output)
 
                 trues = np.concatenate([trues, np.argmax(val_y, axis=-1)], axis=0)
@@ -251,7 +252,8 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
 
             if not val_features.shape[0] == 0 :
                 val_output = cf_model(val_features, training=False)
-                loss = VAL_LOSS(val_y, val_output, label_weight)
+                # loss = LOSS(val_y, val_output, label_weight)
+                loss = VAL_LOSS(val_y, val_output)
                 metric = METRIC(val_y, val_output)
 
                 trues = np.concatenate([trues, np.argmax(val_y, axis=-1)], axis=0)
@@ -531,8 +533,8 @@ if __name__ == '__main__' :
     # modelkey = applications[1]
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
-    driver = 'TaesanKim'
-    # driver = 'GeesungOh'
+    # driver = 'TaesanKim'
+    driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
     odometer = 500
