@@ -552,17 +552,29 @@ def get_va(applications, modelkey, driver, odometer, data, batch_size, learning_
 
     odo = 9857
     save_path = os.path.join(os.getcwd(), 'VA_results', 'matching')
-    trues, preds = va_train(iter(dataloader.get_train_data), num_seq_img)
-    np.save(os.path.join(save_path, driver+'_'+odo+'trues.npy'), trues)
-    np.save(os.path.join(save_path, driver+'_'+odo+'preds.npy'), preds)
+    trues, preds = predict_va(iter(dataloader.get_train_data), num_seq_img)
+    np.save(os.path.join(save_path, driver+'_'+str(odo)+'_trues.npy'), trues)
+    np.save(os.path.join(save_path, driver+'_'+str(odo)+'_preds.npy'), preds)
 
     odo = 9931
-    trues, preds = va_train(iter(dataloader.get_valid_data), num_seq_img)
-    np.save(os.path.join(save_path, driver+'_'+odo+'trues.npy'), trues)
-    np.save(os.path.join(save_path, driver+'_'+odo+'preds.npy'), preds)
+    trues, preds = predict_va(iter(dataloader.get_valid_data), num_seq_img)
+    np.save(os.path.join(save_path, driver+'_'+str(odo)+'_trues.npy'), trues)
+    np.save(os.path.join(save_path, driver+'_'+str(odo)+'_preds.npy'), preds)
 
 
-def va_train(sub_dataloader, num_seq_img) :
+    n_tests, test_odos, test_startodos = dataloader.get_test_num()
+    print(n_tests)
+    print(test_odos)
+    print(test_startodos)
+
+    for test_num in range(n_tests) :
+        odo = test_startodos[test_num]
+        trues, preds = predict_va(dataloader.get_test_data(odo), num_seq_img)
+        np.save(os.path.join(save_path, driver+'_'+str(odo)+'_trues.npy'), trues)
+        np.save(os.path.join(save_path, driver+'_'+str(odo)+'_preds.npy'), preds)
+
+
+def predict_va(sub_dataloader, num_seq_img) :
 
     for i, ((_, x), y) in enumerate(sub_dataloader) :
         input_, y = get_input(detector, x, y, num_seq_img)
