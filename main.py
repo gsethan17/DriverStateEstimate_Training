@@ -4,6 +4,7 @@ import time
 import pandas as pd
 import numpy as np
 from dl_models import face_detector, get_capnet, get_application
+from CAPNet import get_new_model
 import tensorflow as tf
 from utils import get_feature, gpu_limit, get_input
 
@@ -44,7 +45,19 @@ def train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_
 
     detector = face_detector('mmod', 0.5)
 
-    model = get_application(modelkey, num_seq_img)
+    if modelkey == 'CAPNet_new' :
+        path_weights = os.path.join(os.getcwd(), 'weights', 'CAPNet_2', 'best_weights')
+        model = get_new_model(key='CAPNet', preTrained=True,
+                      weight_path = path_weights,
+                      num_seq_image=num_seq_img,
+                      input_size=(224, 224, 3),
+                      )
+        model.build(input_shape=(num_seq_img, 224, 224, 3))
+
+    else :
+        model = get_application(modelkey, num_seq_img)
+
+    print(model.summary())
 
     # cf_model.load_weights(os.path.join(os.getcwd(), 'best'))
     # print('###################')
@@ -55,7 +68,7 @@ def train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_
     METRIC = tf.keras.metrics.CategoricalAccuracy()
     OPTIMIZER = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
-    patience = 5
+    # patience = 5
 
 
     results = {}
@@ -189,7 +202,7 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
     METRIC = tf.keras.metrics.CategoricalAccuracy()
     OPTIMIZER = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
-    patience = 10
+    # patience = 5
 
 
     results = {}
@@ -312,7 +325,17 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
 def test_fs_e2e(modelkey, dataloader, num_seq_img, save_path) :
     detector = face_detector('mmod', 0.5)
 
-    model = get_application(modelkey, num_seq_img)
+    if modelkey == 'CAPNet_new':
+        path_weights = os.path.join(os.getcwd(), 'weights', 'CAPNet_2', 'best_weights')
+        model = get_new_model(key='CAPNet', preTrained=True,
+                              weight_path=path_weights,
+                              num_seq_image=num_seq_img,
+                              input_size=(224, 224, 3),
+                              )
+        model.build(input_shape=(num_seq_img, 224, 224, 3))
+
+    else:
+        model = get_application(modelkey, num_seq_img)
 
     LOSS = tf.keras.losses.CategoricalCrossentropy()
     METRIC = tf.keras.metrics.CategoricalAccuracy()
@@ -521,16 +544,17 @@ def main(applications, modelkey, driver, odometer, data, batch_size, learning_ra
 
 
 if __name__ == '__main__' :
-    gpu_limit(3)
+    # gpu_limit(7)
 
+    global patience
+    patience = 5
     epochs = 100
     num_seq_img = 6
 
-    applications = ['mobilenet', 'resnet']
+    applications = ['mobilenet', 'resnet', 'CAPNet_new']
 
-    modelkey = 'CAPNet'
-    # modelkey = 'mobilenet'
-    # modelkey = applications[1]
+    # modelkey = 'CAPNet'
+    modelkey = applications[2]
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
     # driver = 'TaesanKim'
@@ -544,7 +568,7 @@ if __name__ == '__main__' :
     # data = 'audio'
 
     batch_size = 16
-    learning_rate = 0.0001
+    learning_rate = 0.001
 
     pre_sec = 4
     image_size = 'large'
