@@ -15,9 +15,9 @@ def resize_img(img, h, w) :
     return output_
 
 def get_input(detector, train_x, train_y, num_seq_img) :
-
     batch_size = train_x.shape[0]
     img_length = train_x.shape[1]
+    window_size = int(img_length / num_seq_img)
 
     # make train_input
     input_ = np.zeros((batch_size, num_seq_img, 224, 224, 3))
@@ -32,25 +32,25 @@ def get_input(detector, train_x, train_y, num_seq_img) :
         crop_list['conf'] = []
 
         for l in range(img_length):
+            # cv2.imwrite('./images/{}_{}.jpeg'.format(b, l), train_x[b, l, :, :, :])
             rec, _ = detector.get_detection(train_x[b, l, :, :, :])
             exist, img, conf = crop_detection(train_x[b, l, :, :, :], rec)
             # img = np.resize(img, (224, 224, 3))
             if exist:
                 img = cv2.resize(img, dsize=(224, 224), interpolation=cv2.INTER_AREA)
+                # cv2.imwrite('./images/{}_{}.jpeg'.format(b, l), img)
                 # normalize
                 img = img / 255.
-                # cv2.imwrite('./images/{}_{}_{}.jpeg'.format(i, b, l), img)
 
             crop_list['exist'].append(exist)
             crop_list['img'].append(img)
             crop_list['conf'].append(conf)
-
         b = b - drop_count
 
         for j in range(num_seq_img):
-            ss_images = crop_list['img'][(j * 10):(j * 10) + 10]
-            ss_scores = crop_list['conf'][(j * 10):(j * 10) + 10]
-            ss_exist = crop_list['exist'][(j * 10):(j * 10) + 10]
+            ss_images = crop_list['img'][(j * window_size):(j * window_size) + window_size]
+            ss_scores = crop_list['conf'][(j * window_size):(j * window_size) + window_size]
+            ss_exist = crop_list['exist'][(j * window_size):(j * window_size) + window_size]
 
             ss_image = []
             ss_score = []
@@ -73,7 +73,7 @@ def get_input(detector, train_x, train_y, num_seq_img) :
             else:
                 idx = ss_score.index(max(ss_score))
                 input_img = ss_image[idx]
-                # cv2.imwrite('./images/{}.jpeg'.format(num), input_img)
+                cv2.imwrite('./images/{}_{}.jpeg'.format(b, j), input_img*255.)
                 # train_input[b, i, :, :, :] = input_img
                 input_img = np.expand_dims(input_img, axis=0)
                 input_[b, j, :] = input_img
@@ -85,8 +85,7 @@ def get_input(detector, train_x, train_y, num_seq_img) :
         print(drop_count)
         print('####################################')
         '''
-
-        return input_, train_y
+    return input_, train_y
 
 
 def get_feature(i, detector, fe_model, train_x, train_y, num_seq_img) :
@@ -94,6 +93,7 @@ def get_feature(i, detector, fe_model, train_x, train_y, num_seq_img) :
 
     batch_size = train_x.shape[0]
     img_length = train_x.shape[1]
+    window_size = int(img_length / num_seq_img)
 
     # make train_input
     features = np.zeros((batch_size, num_seq_img, 512))
@@ -124,9 +124,9 @@ def get_feature(i, detector, fe_model, train_x, train_y, num_seq_img) :
         b = b - drop_count
 
         for j in range(num_seq_img):
-            ss_images = crop_list['img'][(j * 10):(j * 10) + 10]
-            ss_scores = crop_list['conf'][(j * 10):(j * 10) + 10]
-            ss_exist = crop_list['exist'][(j * 10):(j * 10) + 10]
+            ss_images = crop_list['img'][(j * window_size):(j * window_size) + window_size]
+            ss_scores = crop_list['conf'][(j * window_size):(j * window_size) + window_size]
+            ss_exist = crop_list['exist'][(j * window_size):(j * window_size) + window_size]
 
             ss_image = []
             ss_score = []
@@ -144,7 +144,7 @@ def get_feature(i, detector, fe_model, train_x, train_y, num_seq_img) :
                 features = np.delete(features, [b], 0)
                 train_y = np.delete(train_y, [b], 0)
                 drop_count += 1
-                break
+                continue
 
             else:
                 idx = ss_score.index(max(ss_score))

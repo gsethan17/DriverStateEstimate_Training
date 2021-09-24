@@ -4,6 +4,7 @@ import time
 import pandas as pd
 import numpy as np
 from dl_models import face_detector, get_capnet, get_application
+from CAPNet import get_model
 import tensorflow as tf
 from utils import get_feature, gpu_limit, get_input
 
@@ -519,11 +520,74 @@ def main(applications, modelkey, driver, odometer, data, batch_size, learning_ra
             train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path)
             test_fs(dataloader, num_seq_img, save_path)
 
+def get_va(applications, modelkey, driver, odometer, data, batch_size, learning_rate, pre_sec, image_size, no_response, epochs, num_seq_img) :
+    data_path = os.path.join(os.getcwd(), 'nas_dms_dataset')
+    dataloader = driving_mode_dataloader(
+        dataset_path=data_path,
+        max_km=odometer,
+        driver=driver,
+        data=data,
+        pre_sec=pre_sec,
+        batch_size=batch_size,
+        valid_ratio=0,
+        image_size=image_size,
+        no_response=no_response,
+    )
+
+    # get detector
+    global detector
+    detector = face_detector('mmod', 0.5)
+
+    # get model
+    global model
+    path_weights = os.path.join(os.getcwd(), 'weights', 'CAPNet_2', 'best_weights')
+    model = get_model(key='CAPNet', preTrained=True,
+                      weight_path = path_weights,
+                      num_seq_image=num_seq_img,
+                      input_size=(224, 224, 3),
+                      )
+    model.build(input_shape=(224, 224, 3))
+    print(model.summary())
+
+
+    odo = 9857
+    save_path = os.path.join(os.getcwd(), 'VA_results', 'matching')
+    trues, preds = va_train(iter(dataloader.get_train_data), num_seq_img)
+    np.save(os.path.join(save_path, driver+'_'+odo+'trues.npy'), trues)
+    np.save(os.path.join(save_path, driver+'_'+odo+'preds.npy'), preds)
+
+    odo = 9931
+    trues, preds = va_train(iter(dataloader.get_valid_data), num_seq_img)
+    np.save(os.path.join(save_path, driver+'_'+odo+'trues.npy'), trues)
+    np.save(os.path.join(save_path, driver+'_'+odo+'preds.npy'), preds)
+
+
+def va_train(sub_dataloader, num_seq_img) :
+
+    for i, ((_, x), y) in enumerate(sub_dataloader) :
+        input_, y = get_input(detector, x, y, num_seq_img)
+        # print(input_.shape, y.shape)
+
+        if not input_.shape[0] == 0 :
+            pred = model(input_, training=False)
+
+            if i == 0 :
+                trues = y
+                preds = pred.numpy()
+
+            else :
+                trues = np.concatenate([trues, y], axis=0)
+                preds = np.concatenate([preds, pred.numpy()], axis=0)
+
+            print(trues.shape)
+            print(preds.shape)
+
+    return trues, preds
 
 if __name__ == '__main__' :
     gpu_limit(3)
 
-    epochs = 100
+    epochs = 1
     num_seq_img = 6
 
     applications = ['mobilenet', 'resnet']
@@ -532,25 +596,26 @@ if __name__ == '__main__' :
     # modelkey = 'mobilenet'
     # modelkey = applications[1]
 
+    global driver
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
     # driver = 'TaesanKim'
     driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
-    odometer = 500
+    odometer = 100
 
     # ['can', 'front_image', 'side_image', 'bio', 'audio']
     data = 'front_image'
     # data = 'audio'
 
     batch_size = 16
-    learning_rate = 0.0001
+    learning_rate = 0.001
 
-    pre_sec = 4
+    pre_sec = 2
     image_size = 'large'
     no_response='ignore'
 
-    main(applications,
+    get_va(applications,
          modelkey,
          driver,
          odometer,
