@@ -533,7 +533,7 @@ def get_va(applications, modelkey, driver, odometer, data, batch_size, learning_
         image_size=image_size,
         no_response=no_response,
     )
-
+    # return -1
     # get detector
     global detector
     detector = face_detector('mmod', 0.5)
@@ -549,38 +549,43 @@ def get_va(applications, modelkey, driver, odometer, data, batch_size, learning_
     model.build(input_shape=(224, 224, 3))
     print(model.summary())
 
-
-    odo = 9857
     save_path = os.path.join(os.getcwd(), 'VA_results', 'matching')
+
+    odo = 9783
     trues, preds = predict_va(iter(dataloader.get_train_data), num_seq_img)
-    np.save(os.path.join(save_path, driver+'_'+str(odo)+'_trues.npy'), trues)
-    np.save(os.path.join(save_path, driver+'_'+str(odo)+'_preds.npy'), preds)
+    if len(trues) != 0 :
+        np.save(os.path.join(save_path, driver+'_'+str(odo)+'_trues.npy'), trues)
+        np.save(os.path.join(save_path, driver+'_'+str(odo)+'_preds.npy'), preds)
 
-    odo = 9931
+    odo = 9808
     trues, preds = predict_va(iter(dataloader.get_valid_data), num_seq_img)
-    np.save(os.path.join(save_path, driver+'_'+str(odo)+'_trues.npy'), trues)
-    np.save(os.path.join(save_path, driver+'_'+str(odo)+'_preds.npy'), preds)
-
-
-    n_tests, test_odos, test_startodos = dataloader.get_test_num()
-    print(n_tests)
-    print(test_odos)
-    print(test_startodos)
-
-    for test_num in range(n_tests) :
-        odo = test_startodos[test_num]
-        trues, preds = predict_va(dataloader.get_test_data(odo), num_seq_img)
+    if len(trues) != 0 :
         np.save(os.path.join(save_path, driver+'_'+str(odo)+'_trues.npy'), trues)
         np.save(os.path.join(save_path, driver+'_'+str(odo)+'_preds.npy'), preds)
 
 
+    n_tests, test_odos, test_startodos = dataloader.get_test_num()
+    # print(n_tests)
+    # print(test_odos)
+    # print(test_startodos)
+
+    for test_num in range(n_tests) :
+        odo = test_startodos[test_num]
+        trues, preds = predict_va(dataloader.get_test_data(odo), num_seq_img)
+        if len(trues) != 0 :
+            np.save(os.path.join(save_path, driver+'_'+str(odo)+'_trues.npy'), trues)
+            np.save(os.path.join(save_path, driver+'_'+str(odo)+'_preds.npy'), preds)
+
+
 def predict_va(sub_dataloader, num_seq_img) :
+    count = 0
 
     for i, ((_, x), y) in enumerate(sub_dataloader) :
         input_, y = get_input(detector, x, y, num_seq_img)
         # print(input_.shape, y.shape)
 
         if not input_.shape[0] == 0 :
+            count += 1
             pred = model(input_, training=False)
 
             if i == 0 :
@@ -593,8 +598,11 @@ def predict_va(sub_dataloader, num_seq_img) :
 
             print(trues.shape)
             print(preds.shape)
+    if count != 0 :
+        return trues, preds
 
-    return trues, preds
+    else :
+        return [], []
 
 if __name__ == '__main__' :
     gpu_limit(3)
@@ -610,11 +618,11 @@ if __name__ == '__main__' :
 
     global driver
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
-    # driver = 'TaesanKim'
-    driver = 'GeesungOh'
+    driver = 'EuiseokJeong'
+    # driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
-    odometer = 100
+    odometer = 50
 
     # ['can', 'front_image', 'side_image', 'bio', 'audio']
     data = 'front_image'
@@ -625,6 +633,7 @@ if __name__ == '__main__' :
 
     pre_sec = 2
     image_size = 'large'
+    # image_size = 'small'
     no_response='ignore'
 
     get_va(applications,
