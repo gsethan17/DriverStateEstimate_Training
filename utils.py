@@ -144,7 +144,7 @@ def get_feature(i, detector, fe_model, train_x, train_y, num_seq_img) :
                 features = np.delete(features, [b], 0)
                 train_y = np.delete(train_y, [b], 0)
                 drop_count += 1
-                continue
+                break
 
             else:
                 idx = ss_score.index(max(ss_score))

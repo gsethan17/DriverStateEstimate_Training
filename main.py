@@ -254,14 +254,14 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
         results['train_loss'].append(total_loss / n_loss)
         results['train_metric'].append(total_metric / n_metric)
         ed_train = time.time()
+
+        trues = np.array([], dtype='int64')
+        preds = np.array([], dtype='int64')
+
         for v, ((_, val_x), val_y) in enumerate(val_dataloader) :
             val_features, val_y = get_feature(v, detector, fe_model, val_x, val_y, num_seq_img)
 
             print(val_x.shape, val_y.shape, val_features.shape)
-
-            trues = np.array([], dtype='int64')
-            preds = np.array([], dtype='int64')
-
 
             if not val_features.shape[0] == 0 :
                 val_output = cf_model(val_features, training=False)
@@ -291,7 +291,7 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
         total_val_metric = sum(temp_results['val_metric'])
         n_val_loss = len(temp_results['val_loss'])
         n_val_metric = len(temp_results['val_metric'])
-        print(total_val_loss, n_val_loss, total_val_metric, n_val_metric, acc)
+        print(total_val_loss, n_val_loss, total_val_metric, n_val_metric, acc, tp, len(trues))
 
         results['val_loss'].append(total_val_loss / n_val_loss)
         results['val_metric'].append(total_val_metric / n_val_metric)
@@ -530,7 +530,7 @@ def main(applications, modelkey, driver, odometer, data, batch_size, learning_ra
 
     (label_num, label_weight) = dataloader.get_label_weights()
 
-    save_path = os.path.join(os.getcwd(), data, driver, str(odometer), modelkey, str(learning_rate))
+    save_path = os.path.join(os.getcwd(), data, driver, str(odometer) + '_' + str(pre_sec), modelkey, str(learning_rate))
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
 
@@ -544,7 +544,7 @@ def main(applications, modelkey, driver, odometer, data, batch_size, learning_ra
 
 
 if __name__ == '__main__' :
-    # gpu_limit(7)
+    gpu_limit(3)
 
     global patience
     patience = 5
@@ -553,15 +553,15 @@ if __name__ == '__main__' :
 
     applications = ['mobilenet', 'resnet', 'CAPNet_new']
 
-    # modelkey = 'CAPNet'
-    modelkey = applications[2]
+    modelkey = 'CAPNet'
+    # modelkey = applications[2]
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
     # driver = 'TaesanKim'
     driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
-    odometer = 500
+    odometer = 800
 
     # ['can', 'front_image', 'side_image', 'bio', 'audio']
     data = 'front_image'
@@ -570,7 +570,7 @@ if __name__ == '__main__' :
     batch_size = 16
     learning_rate = 0.001
 
-    pre_sec = 4
+    pre_sec = 2
     image_size = 'large'
     no_response='ignore'
 
