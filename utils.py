@@ -3,6 +3,79 @@ import numpy as np
 from dl_models import face_detector, crop_detection
 import tensorflow as tf
 
+def cal_acc(trues, preds) :
+    #           0, 1, 2, 3
+    # 0
+    # 1
+    # 2
+    # 3
+    mt = np.zeros((4, 4))
+
+    for t in range(len(trues)) :
+        true = trues[t]
+        pred = preds[t]
+
+        mt[true, pred] += 1
+
+    tp = 0
+
+    avg_fp = 0
+    avg_fn = 0
+    avg_tn = 0
+
+    for i in range(4) :
+        # overall
+        tp += mt[i, i]
+
+        # average
+        avg_fn += np.sum(mt[i, :]) - mt[i, i]
+        avg_fp += np.sum(mt[:, i]) - mt[i, i]
+
+        for j in range(4) :
+            if not j == i :
+                avg_tn += np.sum(mt[j, :]) - mt[j, i]
+
+    overall_acc = tp / np.sum(mt)
+    average_acc = (tp + avg_tn) / (tp + avg_tn + avg_fn + avg_fp)
+
+    return overall_acc, average_acc
+
+
+
+
+def weighted_cross_entropy(true, pred, label_weight) :
+    n = true.shape[0]
+
+    nlls = []
+
+    for i in range(n) :
+        y = true[i]
+        idx = tf.argmax(y)
+
+        p = pred[i, idx]
+
+        nll = -tf.math.log(p)
+
+        weighted_nll = nll * label_weight[idx]
+
+        nlls.append(weighted_nll)
+
+    loss = tf.math.reduce_mean(nlls)
+
+    return loss
+
+def weighted_loss(y_true, y_pred, weight_list):
+    cce = tf.keras.losses.CategoricalCrossentropy()
+    len_y = len(y_true)
+    if not len_y == len(y_pred):
+        raise ValueError(f"The length of y{len_y} and prediction{len(y_true)} is not same!")
+    total_loss = 0
+    for i in range(len_y):
+        tmp_loss = cce(y_pred[i], np.float32(y_true[i]))
+        total_loss += weight_list[np.argmax(y_true[i])] * tmp_loss
+    return total_loss / len_y
+
+
 def resize_img(img, h, w) :
     batch_size = img.shape[0]
     n_timewindow = img.shape[1]

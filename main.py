@@ -6,39 +6,7 @@ import numpy as np
 from dl_models import face_detector, get_capnet, get_application
 from CAPNet import get_new_model
 import tensorflow as tf
-from utils import get_feature, gpu_limit, get_input
-
-def weighted_cross_entropy(true, pred, label_weight) :
-    n = true.shape[0]
-
-    nlls = []
-
-    for i in range(n) :
-        y = true[i]
-        idx = tf.argmax(y)
-
-        p = pred[i, idx]
-
-        nll = -tf.math.log(p)
-
-        weighted_nll = nll * label_weight[idx]
-
-        nlls.append(weighted_nll)
-
-    loss = tf.math.reduce_mean(nlls)
-
-    return loss
-
-def weighted_loss(y_true, y_pred, weight_list):
-    cce = tf.keras.losses.CategoricalCrossentropy()
-    len_y = len(y_true)
-    if not len_y == len(y_pred):
-        raise ValueError(f"The length of y{len_y} and prediction{len(y_true)} is not same!")
-    total_loss = 0
-    for i in range(len_y):
-        tmp_loss = cce(y_pred[i], np.float32(y_true[i]))
-        total_loss += weight_list[np.argmax(y_true[i])] * tmp_loss
-    return total_loss / len_y
+from utils import get_feature, gpu_limit, get_input, weighted_loss, weighted_cross_entropy, cal_acc
 
 
 def train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path) :
@@ -210,7 +178,11 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
     results['train_metric'] = []
     results['val_loss'] = []
     results['val_metric'] = []
-    results['val_acc'] = []
+    results['val_acc_overall'] = []
+    results['val_acc_average'] = []
+
+    stop_flag_overall = False
+    stop_flag_average = False
 
 
     for epoch in range(epochs) :
@@ -277,46 +249,52 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
 
                 print('Validation', v, temp_results['val_loss'][-1], temp_results['val_metric'][-1])
 
-        tp = 0
-        for t in range(len(trues)) :
-            true = trues[t]
-            pred = preds[t]
-            if true == pred :
-                tp += 1
-
-        acc = tp / len(trues)
+        overall_acc, average_acc = cal_acc(trues, preds)
 
         # print(temp_results)
         total_val_loss = sum(temp_results['val_loss'])
         total_val_metric = sum(temp_results['val_metric'])
         n_val_loss = len(temp_results['val_loss'])
         n_val_metric = len(temp_results['val_metric'])
-        print(total_val_loss, n_val_loss, total_val_metric, n_val_metric, acc, tp, len(trues))
+        print(total_val_loss, n_val_loss, total_val_metric, n_val_metric, overall_acc, average_acc)
 
         results['val_loss'].append(total_val_loss / n_val_loss)
         results['val_metric'].append(total_val_metric / n_val_metric)
-        results['val_acc'].append(acc)
+        results['val_acc_overall'].append(overall_acc)
+        results['val_acc_average'].append(average_acc)
         ed_val = time.time()
 
         print(
-            "{:>3} / {:>3} || train_loss:{:8.4f}, train_metric:{:8.4f}, val_loss:{:8.4f}, val_metric:{:8.4f}, val_acc:{:8.4f} || TIME: Train {:8.1f}sec, Validation {:8.1f}sec".format(
+            "{:>3} / {:>3} || train_loss:{:8.4f}, train_metric:{:8.4f}, val_loss:{:8.4f}, val_metric:{:8.4f}, val_acc_overall:{:8.4f}, val_acc_average:{:8.4f} || TIME: Train {:8.1f}sec, Validation {:8.1f}sec".format(
                 epoch + 1, epochs,
                 results['train_loss'][-1],
                 results['train_metric'][-1],
                 results['val_loss'][-1],
                 results['val_metric'][-1],
-                results['val_acc'][-1],
+                results['val_acc_overall'][-1],
+                results['val_acc_average'][-1],
                 (ed_train - st_train),
                 (ed_val - ed_train)))
 
-        if results['val_metric'][-1] == max(results['val_metric']) :
+        if results['val_acc_overall'][-1] == max(results['val_acc_overall']) :
             weights_path = os.path.join(save_path, 'weights')
             if not os.path.isdir(weights_path) :
                 os.makedirs(weights_path)
-            cf_model.save_weights(os.path.join(save_path, 'weights', 'best'))
+            cf_model.save_weights(os.path.join(save_path, 'weights', 'best_overall'))
 
-        if epoch > (patience - 1) and max(results['val_acc'][(-1 * (patience + 1)):]) == results['val_acc'][(-1 * (patience + 1))]:
+        if results['val_acc_average'][-1] == max(results['val_acc_average']) :
+            weights_path = os.path.join(save_path, 'weights')
+            if not os.path.isdir(weights_path) :
+                os.makedirs(weights_path)
+            cf_model.save_weights(os.path.join(save_path, 'weights', 'best_average'))
+
+        if epoch > (patience - 1) and max(results['val_acc_overall'][(-1 * (patience + 1)):]) == results['val_acc_overall'][(-1 * (patience + 1))]:
+            stop_flag_overall = True
+        if epoch > (patience - 1) and max(results['val_acc_average'][(-1 * (patience + 1)):]) == results['val_acc_average'][(-1 * (patience + 1))]:
+            stop_flag_average = True
+        if stop_flag_overall and stop_flag_average :
             break
+
         dataloader.shuffle_data()
 
         df = pd.DataFrame(results)
@@ -530,7 +508,7 @@ def main(applications, modelkey, driver, odometer, data, batch_size, learning_ra
 
     (label_num, label_weight) = dataloader.get_label_weights()
 
-    save_path = os.path.join(os.getcwd(), data, driver, str(odometer) + '_' + str(pre_sec), modelkey, str(learning_rate))
+    save_path = os.path.join(os.getcwd(), data, driver, str(odometer) + '_' + str(pre_sec), modelkey, 'WB_' + str(learning_rate))
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
 
@@ -561,7 +539,7 @@ if __name__ == '__main__' :
     driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
-    odometer = 800
+    odometer = 500
 
     # ['can', 'front_image', 'side_image', 'bio', 'audio']
     data = 'front_image'
