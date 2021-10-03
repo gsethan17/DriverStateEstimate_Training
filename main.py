@@ -401,7 +401,7 @@ def test_fs_e2e(modelkey, dataloader, num_seq_img, save_path) :
     df = pd.DataFrame(results)
     df.to_csv(os.path.join(save_path, 'test_results.csv'), index=False)
 
-def test_fs(dataloader, num_seq_img, save_path) :
+def test_fs(dataloader, num_seq_img, save_path, weights_path) :
     detector = face_detector('mmod', 0.5)
 
     fe_model, cf_model = get_capnet(num_seq_img, 0.2)
@@ -416,7 +416,7 @@ def test_fs(dataloader, num_seq_img, save_path) :
     results['test_metric'] = []
 
     # weights load
-    weights_path = os.path.join(save_path, 'weights', 'best')
+    # weights_path = os.path.join(save_path, 'weights', 'best')
     cf_model.load_weights(weights_path)
 
     n_tests, test_odos, test_startodos = dataloader.get_test_num()
@@ -517,8 +517,18 @@ def main(applications, modelkey, driver, odometer, data, batch_size, learning_ra
             train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path)
             test_fs_e2e(modelkey, dataloader, num_seq_img, save_path)
         else :
-            train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path)
-            test_fs(dataloader, num_seq_img, save_path)
+            # train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path)
+            overall_path = os.path.join(save_path, 'test_overall')
+            if not os.path.isdir(overall_path):
+                os.makedirs(overall_path)
+            weights_path = os.path.join(save_path, 'weights', 'best_overall')
+            test_fs(dataloader, num_seq_img, overall_path, weights_path)
+
+            average_path = os.path.join(save_path, 'test_average')
+            if not os.path.isdir(average_path):
+                os.makedirs(average_path)
+            weights_path = os.path.join(save_path, 'weights', 'best_average')
+            test_fs(dataloader, num_seq_img, average_path, weights_path)
 
 
 if __name__ == '__main__' :
@@ -535,8 +545,8 @@ if __name__ == '__main__' :
     # modelkey = applications[2]
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
-    # driver = 'TaesanKim'
-    driver = 'GeesungOh'
+    driver = 'TaesanKim'
+    # driver = 'GeesungOh'
 
     # 500, 800, 1000, 1500, 2000
     odometer = 500
