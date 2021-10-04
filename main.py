@@ -6,7 +6,7 @@ import numpy as np
 from dl_models import face_detector, get_capnet, get_application
 from CAPNet import get_new_model
 import tensorflow as tf
-from utils import get_feature, gpu_limit, get_input, weighted_loss, weighted_cross_entropy, cal_acc
+from utils import get_feature, gpu_limit, get_input, weighted_loss, weighted_cross_entropy, cal_acc, weighted_myloss
 
 
 def train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path) :
@@ -165,7 +165,8 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
     # print('###################')
 
     VAL_LOSS = tf.keras.losses.CategoricalCrossentropy()
-    LOSS = weighted_cross_entropy
+    # LOSS = weighted_cross_entropy
+    LOSS = weighted_myloss
     # LOSS = weighted_loss
     METRIC = tf.keras.metrics.CategoricalAccuracy()
     OPTIMIZER = tf.keras.optimizers.Adam(learning_rate=learning_rate)
@@ -278,12 +279,14 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
 
         if results['val_acc_overall'][-1] == max(results['val_acc_overall']) :
             weights_path = os.path.join(save_path, 'weights')
+            stop_flag_overall = False
             if not os.path.isdir(weights_path) :
                 os.makedirs(weights_path)
             cf_model.save_weights(os.path.join(save_path, 'weights', 'best_overall'))
 
         if results['val_acc_average'][-1] == max(results['val_acc_average']) :
             weights_path = os.path.join(save_path, 'weights')
+            stop_flag_average = False
             if not os.path.isdir(weights_path) :
                 os.makedirs(weights_path)
             cf_model.save_weights(os.path.join(save_path, 'weights', 'best_average'))
@@ -508,7 +511,7 @@ def main(applications, modelkey, driver, odometer, data, batch_size, learning_ra
 
     (label_num, label_weight) = dataloader.get_label_weights()
 
-    save_path = os.path.join(os.getcwd(), data, driver, str(odometer) + '_' + str(pre_sec), modelkey, 'WB_' + str(learning_rate))
+    save_path = os.path.join(os.getcwd(), data, driver, str(odometer) + '_' + str(pre_sec), modelkey, 'WB_ML_' + str(learning_rate))
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
 
@@ -517,7 +520,7 @@ def main(applications, modelkey, driver, odometer, data, batch_size, learning_ra
             train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path)
             test_fs_e2e(modelkey, dataloader, num_seq_img, save_path)
         else :
-            # train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path)
+            train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path)
             overall_path = os.path.join(save_path, 'test_overall')
             if not os.path.isdir(overall_path):
                 os.makedirs(overall_path)
