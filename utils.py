@@ -3,6 +3,53 @@ import numpy as np
 from dl_models import face_detector, crop_detection
 import tensorflow as tf
 
+def my_loss_val(trues, preds) :
+    mt = np.zeros((4, 4))
+
+    for t in range(len(trues)) :
+        true = trues[t]
+        pred = preds[t]
+
+        mt[true, pred] += 1
+
+    num = 0.0
+
+
+    if np.sum(mt[:,3]) != 0 :
+        precision_hn = mt[3, 3] / np.sum(mt[:, 3])
+        num += 1.
+    else :
+        precision_hn = 0.0
+
+    if np.sum(mt[0, :]) != 0 :
+        recall_ad = mt[0, 0] / np.sum(mt[0, :])
+        num += 1.
+    else :
+        recall_ad = 0.0
+
+    if np.sum(mt[1, :]) != 0:
+        recall_es = mt[1, 1] / np.sum(mt[1, :])
+        num += 1.
+    else:
+        recall_es = 0.0
+
+    if np.sum(mt[2, :]) != 0 :
+        recall_sf = mt[2, 2] / np.sum(mt[2, :])
+        num += 1.
+    else :
+        recall_sf = 0.0
+
+    if num == 0 :
+        loss = 0
+    else :
+        loss = (precision_hn + recall_ad + recall_es + recall_sf) / num
+        # loss = -tf.math.log(loss).numpy()
+
+    return loss
+
+
+
+
 def my_loss(trues, preds) :
     mt = np.zeros((4, 4))
 
@@ -43,15 +90,18 @@ def my_loss(trues, preds) :
         loss = 0
     else :
         loss = (precision_hn + recall_ad + recall_es + recall_sf) / num
-        loss = -tf.math.log(loss).numpy()
+        # loss = -tf.math.log(loss).numpy()
 
     return loss
 
 def weighted_myloss(true, pred, label_weight) :
     w_ce_loss = weighted_cross_entropy(true, pred, label_weight)
     myloss = my_loss(true, pred)
-
-    loss = w_ce_loss + myloss
+    if myloss == 0 :
+        loss = w_ce_loss
+    else :
+        myloss = -tf.math.log(myloss).numpy()
+        loss = w_ce_loss + myloss
 
     return loss
 
