@@ -1,5 +1,6 @@
 from drivingmode_dataloader_v3 import driving_mode_dataloader
 import os
+import glob
 import time
 import pandas as pd
 import numpy as np
@@ -164,7 +165,7 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
     # cf_model.load_weights(os.path.join(os.getcwd(), 'best'))
     # print('###################')
 
-    VAL_LOSS = tf.keras.losses.CategoricalCrossentropy()
+    # VAL_LOSS = tf.keras.losses.CategoricalCrossentropy()
 
     # normal
     if loss_name == 'normal' :
@@ -260,7 +261,10 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
                 trues = np.concatenate([trues, np.argmax(val_y, axis=-1)], axis=0)
                 preds = np.concatenate([preds, np.argmax(val_output, axis=-1)], axis=0)
 
-                temp_results['val_loss'].append(loss.numpy())
+                if loss_name == 'ML' :
+                    temp_results['val_loss'].append(loss)
+                else :
+                    temp_results['val_loss'].append(loss.numpy())
                 temp_results['val_metric'].append(metric.numpy())
 
                 print('Validation', v, temp_results['val_loss'][-1], temp_results['val_metric'][-1])
@@ -300,21 +304,21 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
             stop_flag_overall = False
             if not os.path.isdir(weights_path) :
                 os.makedirs(weights_path)
-            cf_model.save_weights(os.path.join(save_path, 'weights', 'best_overall'))
+            cf_model.save_weights(os.path.join(save_path, 'weights', 'best_overall_{}'.format(epoch+1)))
 
         if results['val_acc_average'][-1] == max(results['val_acc_average']) :
             weights_path = os.path.join(save_path, 'weights')
             stop_flag_average = False
             if not os.path.isdir(weights_path) :
                 os.makedirs(weights_path)
-            cf_model.save_weights(os.path.join(save_path, 'weights', 'best_average'))
+            cf_model.save_weights(os.path.join(save_path, 'weights', 'best_average_{}'.format(epoch+1)))
 
         if results['val_my_loss'][-1] == max(results['val_my_loss']) :
             weights_path = os.path.join(save_path, 'weights')
             stop_flag_myloss = False
             if not os.path.isdir(weights_path) :
                 os.makedirs(weights_path)
-            cf_model.save_weights(os.path.join(save_path, 'weights', 'best_myloss'))
+            cf_model.save_weights(os.path.join(save_path, 'weights', 'best_myloss_{}'.format(epoch+1)))
 
         if epoch > (patience - 1) and max(results['val_acc_overall'][(-1 * (patience + 1)):]) == results['val_acc_overall'][(-1 * (patience + 1))]:
             stop_flag_overall = True
@@ -554,17 +558,22 @@ def main(applications, modelkey, driver, odometer, data, batch_size, learning_ra
             test_fs_e2e(modelkey, dataloader, num_seq_img, save_path)
         else :
             train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path, loss)
+
             overall_path = os.path.join(save_path, 'test_overall')
             if not os.path.isdir(overall_path):
                 os.makedirs(overall_path)
-            weights_path = os.path.join(save_path, 'weights', 'best_overall')
+            weights_path = glob.glob(os.path.join(save_path, 'weights', 'best_overall_*'))
+            weights_name = os.path.basename(weights_path[0]).split('.')[0]
+            weights_path = os.path.join(save_path, 'weights', weights_name)
             test_fs(dataloader, num_seq_img, overall_path, weights_path)
 
-            # average_path = os.path.join(save_path, 'test_average')
-            # if not os.path.isdir(average_path):
-            #     os.makedirs(average_path)
-            # weights_path = os.path.join(save_path, 'weights', 'best_average')
-            # test_fs(dataloader, num_seq_img, average_path, weights_path)
+            average_path = os.path.join(save_path, 'test_myloss')
+            if not os.path.isdir(average_path):
+                os.makedirs(average_path)
+            weights_path = glob.glob(os.path.join(save_path, 'weights', 'best_myloss_*'))
+            weights_name = os.path.basename(weights_path[0]).split('.')[0]
+            weights_path = os.path.join(save_path, 'weights', weights_name)
+            test_fs(dataloader, num_seq_img, average_path, weights_path)
 
 
 if __name__ == '__main__' :
@@ -579,7 +588,9 @@ if __name__ == '__main__' :
 
     modelkey = 'CAPNet'
     # modelkey = applications[2]
-    loss = 'normal'
+
+    # normal, WB, ML
+    loss = 'ML'
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
     driver = 'TaesanKim'
