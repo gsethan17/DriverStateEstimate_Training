@@ -48,7 +48,147 @@ def my_loss_val(trues, preds) :
     return loss
 
 
+def f1_loss_val(trues, preds):
+    mt = np.zeros((4, 4))
 
+    for t in range(len(trues)):
+        true = trues[t]
+        pred = preds[t]
+
+        mt[true, pred] += 1
+
+    num_pre = 0.0
+    num_recall = 0.0
+
+    if np.sum(mt[:, 3]) != 0:
+        precision_hn = mt[3, 3] / np.sum(mt[:, 3])
+        num_pre += 1.
+    else:
+        precision_hn = 0.0
+
+    if np.sum(mt[3, :]) != 0:
+        recall_hn = mt[3, 3] / np.sum(mt[3, :])
+        num_recall += 1.
+    else:
+        recall_hn = 0.0
+
+    if np.sum(mt[:, 0]) != 0:
+        precision_ad = mt[0, 0] / np.sum(mt[:, 0])
+        num_pre += 1.
+    else:
+        precision_ad = 0.0
+
+    if np.sum(mt[0, :]) != 0:
+        recall_ad = mt[0, 0] / np.sum(mt[0, :])
+        num_recall += 1.
+    else:
+        recall_ad = 0.0
+
+    if np.sum(mt[:, 1]) != 0:
+        precision_es = mt[1, 1] / np.sum(mt[:, 1])
+        num_pre += 1.
+    else:
+        precision_es = 0.0
+
+    if np.sum(mt[1, :]) != 0:
+        recall_es = mt[1, 1] / np.sum(mt[1, :])
+        num_recall += 1.
+    else:
+        recall_es = 0.0
+
+    if np.sum(mt[:, 2]) != 0:
+        precision_sf = mt[2, 2] / np.sum(mt[:, 2])
+        num_pre += 1.
+    else:
+        precision_sf = 0.0
+
+    if np.sum(mt[2, :]) != 0:
+        recall_sf = mt[2, 2] / np.sum(mt[2, :])
+        num_recall += 1.
+    else:
+        recall_sf = 0.0
+
+    if num_pre == 0 or num_recall == 0:
+        loss = 0
+
+    else:
+        avg_pre = (precision_sf + precision_ad + precision_es + precision_hn) / num_pre
+        avg_recall = (recall_sf + recall_ad + recall_es + recall_hn) / num_recall
+        loss = 2 * (avg_pre * avg_recall) / (avg_pre + avg_recall)
+
+    return loss
+
+
+def f1_loss(trues, preds) :
+    mt = np.zeros((4, 4))
+
+    for t in range(len(trues)):
+        true = np.argmax(trues[t], axis=-1)
+        pred = np.argmax(preds[t], axis=-1)
+
+        mt[true, pred] += 1
+
+    num_pre = 0.0
+    num_recall = 0.0
+
+
+    if np.sum(mt[:,3]) != 0 :
+        precision_hn = mt[3, 3] / np.sum(mt[:, 3])
+        num_pre += 1.
+    else :
+        precision_hn = 0.0
+
+    if np.sum(mt[3,:]) != 0 :
+        recall_hn = mt[3, 3] / np.sum(mt[3, :])
+        num_recall += 1.
+    else :
+        recall_hn = 0.0
+
+    if np.sum(mt[:, 0]) != 0 :
+        precision_ad = mt[0, 0] / np.sum(mt[:, 0])
+        num_pre += 1.
+    else :
+        precision_ad = 0.0
+
+    if np.sum(mt[0, :]) != 0 :
+        recall_ad = mt[0, 0] / np.sum(mt[0, :])
+        num_recall += 1.
+    else :
+        recall_ad = 0.0
+
+    if np.sum(mt[:, 1]) != 0:
+        precision_es = mt[1, 1] / np.sum(mt[:, 1])
+        num_pre += 1.
+    else:
+        precision_es = 0.0
+
+    if np.sum(mt[1, :]) != 0:
+        recall_es = mt[1, 1] / np.sum(mt[1, :])
+        num_recall += 1.
+    else:
+        recall_es = 0.0
+
+    if np.sum(mt[:, 2]) != 0 :
+        precision_sf = mt[2, 2] / np.sum(mt[:, 2])
+        num_pre += 1.
+    else :
+        precision_sf = 0.0
+
+    if np.sum(mt[2, :]) != 0 :
+        recall_sf = mt[2, 2] / np.sum(mt[2, :])
+        num_recall += 1.
+    else :
+        recall_sf = 0.0
+
+    if num_pre == 0 or num_recall == 0 :
+        loss = 0
+
+    else :
+        avg_pre = (precision_sf + precision_ad + precision_es + precision_hn) / num_pre
+        avg_recall = (recall_sf + recall_ad + recall_es + recall_hn) / num_recall
+        loss = 2 * (avg_pre * avg_recall) / (avg_pre + avg_recall)
+
+    return loss
 
 def my_loss(trues, preds) :
     mt = np.zeros((4, 4))
@@ -91,6 +231,17 @@ def my_loss(trues, preds) :
     else :
         loss = (precision_hn + recall_ad + recall_es + recall_sf) / num
         # loss = -tf.math.log(loss).numpy()
+
+    return loss
+
+def weighted_f1(true, pred, label_weight) :
+    w_ce_loss = weighted_cross_entropy(true, pred, label_weight)
+    f1loss = f1_loss(true, pred)
+    if f1loss == 0 :
+        loss = w_ce_loss
+    else :
+        f1loss = -tf.math.log(f1loss).numpy()
+        loss = w_ce_loss + f1loss
 
     return loss
 
