@@ -542,7 +542,7 @@ def test_fs(dataloader, num_seq_img, save_path, weights_path) :
     df.to_csv(os.path.join(save_path, 'test_results.csv'), index=False)
 
 
-def main(applications, modelkey, driver, odometer, data, batch_size, learning_rate, pre_sec, image_size, no_response, epochs, num_seq_img, loss) :
+def main(applications, modelkey, driver, val_ratio, odometer, data, batch_size, learning_rate, pre_sec, image_size, no_response, epochs, num_seq_img, loss) :
     data_path = os.path.join(os.getcwd(), 'nas_dms_dataset')
     dataloader = driving_mode_dataloader(
         dataset_path=data_path,
@@ -551,7 +551,7 @@ def main(applications, modelkey, driver, odometer, data, batch_size, learning_ra
         data=data,
         pre_sec=pre_sec,
         batch_size=batch_size,
-        valid_ratio=0.3,
+        valid_ratio=val_ratio,
         image_size=image_size,
         no_response=no_response,
     )
@@ -616,12 +616,15 @@ if __name__ == '__main__' :
     # modelkey = applications[2]
 
     # normal, WB, ML, f1
-    loss = 'f1'
+    loss = 'WB'
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
-    # driver = 'TaesanKim'
+    driver = 'TaesanKim'
+    val_ratio = 0.2
     # driver = 'GeesungOh'
-    driver = 'EuiseokJeong'
+    # val_ratio = 0.3
+    # driver = 'EuiseokJeong'
+    # val_ratio = 0.4
 
     # 500, 800, 1000, 1500, 2000
     odometer = 500
@@ -640,6 +643,7 @@ if __name__ == '__main__' :
     main(applications,
          modelkey,
          driver,
+         val_ratio,
          odometer,
          data,
          batch_size,
