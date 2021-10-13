@@ -616,7 +616,7 @@ if __name__ == '__main__' :
     # modelkey = applications[2]
 
     # normal, WB, ML, f1
-    loss = 'WB'
+    loss = 'ML'
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
     driver = 'TaesanKim'
