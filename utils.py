@@ -119,7 +119,7 @@ def f1_loss_val(trues, preds):
     return loss
 
 
-def f1_loss(trues, preds) :
+def f1_loss(trues, preds, type = 'majority') :
     mt = np.zeros((4, 4))
 
     for t in range(len(trues)):
@@ -131,17 +131,20 @@ def f1_loss(trues, preds) :
     num_pre = 0.0
     num_recall = 0.0
 
+    if type == 'majority' :
+        if np.sum(mt[:,3]) != 0 :
+            precision_hn = mt[3, 3] / np.sum(mt[:, 3])
+            num_pre += 1.
+        else :
+            precision_hn = 0.0
 
-    if np.sum(mt[:,3]) != 0 :
-        precision_hn = mt[3, 3] / np.sum(mt[:, 3])
-        num_pre += 1.
+        if np.sum(mt[3,:]) != 0 :
+            recall_hn = mt[3, 3] / np.sum(mt[3, :])
+            num_recall += 1.
+        else :
+            recall_hn = 0.0
     else :
         precision_hn = 0.0
-
-    if np.sum(mt[3,:]) != 0 :
-        recall_hn = mt[3, 3] / np.sum(mt[3, :])
-        num_recall += 1.
-    else :
         recall_hn = 0.0
 
     if np.sum(mt[:, 0]) != 0 :
@@ -186,7 +189,7 @@ def f1_loss(trues, preds) :
     else :
         avg_pre = (precision_sf + precision_ad + precision_es + precision_hn) / num_pre
         avg_recall = (recall_sf + recall_ad + recall_es + recall_hn) / num_recall
-        loss = 2 * (avg_pre * avg_recall) / (avg_pre + avg_recall)
+        loss = 2 * (avg_pre * avg_recall) / (avg_pre + avg_recall + 1e-16)
 
     return loss
 
@@ -295,7 +298,40 @@ def cal_acc(trues, preds) :
     return overall_acc, average_acc
 
 
+def macro_soft_f1(y, y_hat, label_weights = [1., 1., 1., 1.]):
+    """Compute the macro soft F1-score as a cost.
+    Average (1 - soft-F1) across all labels.
+    Use probability values instead of binary predictions.
 
+    Args:
+        y (int32 Tensor): targets array of shape (BATCH_SIZE, N_LABELS)
+        y_hat (float32 Tensor): probability matrix of shape (BATCH_SIZE, N_LABELS)
+
+    Returns:
+        cost (scalar Tensor): value of the cost function for the batch
+    """
+
+    y = tf.cast(y, tf.float32)
+    y_hat = tf.cast(y_hat, tf.float32)
+    label_weights = tf.cast(label_weights, tf.float32)
+
+    tp = tf.reduce_sum(y_hat * y, axis=0)
+    fp = tf.reduce_sum(y_hat * (1 - y), axis=0)
+    fn = tf.reduce_sum((1 - y_hat) * y, axis=0)
+    soft_f1 = 2 * tp / (2 * tp + fn + fp + 1e-16)
+    cost = 1 - soft_f1  # reduce 1 - soft-f1 in order to increase soft-f1
+    w_macro_cost = tf.multiply(cost, label_weights)
+    macro_cost = tf.reduce_mean(w_macro_cost)  # average on all labels
+
+    return macro_cost
+
+def WE_CE_softf1(true, pred, label_weight) :
+    w_ce = weighted_cross_entropy(true, pred, label_weight)
+    softf1 = macro_soft_f1(true, pred, label_weight)
+
+    loss = w_ce + softf1
+
+    return loss
 
 def weighted_cross_entropy(true, pred, label_weight) :
     n = true.shape[0]

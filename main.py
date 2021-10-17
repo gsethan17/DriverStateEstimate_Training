@@ -7,7 +7,7 @@ import numpy as np
 from dl_models import face_detector, get_capnet, get_application
 from CAPNet import get_new_model
 import tensorflow as tf
-from utils import get_feature, gpu_limit, get_input, weighted_loss, weighted_cross_entropy, cal_acc, weighted_myloss, my_loss, my_loss_val, weighted_f1, f1_loss_val, f1_loss
+from utils import get_feature, gpu_limit, get_input, weighted_loss, weighted_cross_entropy, cal_acc, weighted_myloss, my_loss, my_loss_val, weighted_f1, f1_loss_val, f1_loss, macro_soft_f1, WE_CE_softf1
 
 
 def train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path) :
@@ -170,6 +170,7 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
     stop_flag_overall = True
     stop_flag_myloss = True
     stop_flag_f1 = True
+    stop_flag = True
 
     # normal
     if loss_name == 'normal' :
@@ -189,8 +190,17 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
         VAL_LOSS = f1_loss
         stop_flag_f1 = False
 
+    elif loss_name == 'softf1' or loss_name == 'Wsoftf1' :
+        LOSS = macro_soft_f1
+        VAL_LOSS = macro_soft_f1
+        stop_flag = False
 
-    METRIC = tf.keras.metrics.CategoricalAccuracy()
+    elif loss_name == 'WB_softf1' or loss_name == 'WB_Wsoftf1' :
+        LOSS = WE_CE_softf1
+        VAL_LOSS = WE_CE_softf1
+        stop_flag = False
+
+    METRIC = f1_loss
     OPTIMIZER = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
     # patience = 5
@@ -226,17 +236,17 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
                 # Training
                 with tf.GradientTape() as tape :
                     output = cf_model(features, training=True)
-                    if loss_name == 'normal' :
+                    if loss_name == 'normal' or loss_name == 'softf1' :
                         loss = LOSS(train_y, output)
                     else :
                         loss = LOSS(train_y, output, label_weight)
-                    metric = METRIC(train_y, output)
+                    metric = METRIC(train_y, output, type='minority')
 
                 gradients = tape.gradient(loss, cf_model.trainable_variables)
                 OPTIMIZER.apply_gradients(zip(gradients, cf_model.trainable_variables))
 
                 temp_results['train_loss'].append(loss.numpy())
-                temp_results['train_metric'].append(metric.numpy())
+                temp_results['train_metric'].append(metric)
 
                 print('Train', i, temp_results['train_loss'][-1], temp_results['train_metric'][-1])
 
@@ -262,8 +272,11 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
             if not val_features.shape[0] == 0 :
                 val_output = cf_model(val_features, training=False)
                 # loss = LOSS(val_y, val_output, label_weight)
-                loss = VAL_LOSS(val_y, val_output)
-                metric = METRIC(val_y, val_output)
+                if loss_name == 'normal' or loss_name == 'softf1':
+                    loss = VAL_LOSS(train_y, output)
+                else:
+                    loss = VAL_LOSS(train_y, output, label_weight)
+                metric = METRIC(val_y, val_output, type='minority')
 
                 trues = np.concatenate([trues, np.argmax(val_y, axis=-1)], axis=0)
                 preds = np.concatenate([preds, np.argmax(val_output, axis=-1)], axis=0)
@@ -272,7 +285,7 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
                     temp_results['val_loss'].append(loss)
                 else :
                     temp_results['val_loss'].append(loss.numpy())
-                temp_results['val_metric'].append(metric.numpy())
+                temp_results['val_metric'].append(metric)
 
                 print('Validation', v, temp_results['val_loss'][-1], temp_results['val_metric'][-1])
 
@@ -342,7 +355,23 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
             if epoch > (patience - 1) and max(results['val_f1_loss'][(-1 * (patience + 1)):]) == results['val_f1_loss'][(-1 * (patience + 1))]:
                 stop_flag_f1 = True
 
-        if stop_flag_overall and stop_flag_myloss and stop_flag_f1 :
+        else :
+            if results['val_loss'][-1] == min(results['val_loss']) :
+                weights_path = os.path.join(save_path, 'weights')
+                stop_flag = False
+                if not os.path.isdir(weights_path) :
+                    os.makedirs(weights_path)
+                cf_model.save_weights(os.path.join(save_path, 'weights', 'best_loss'))
+
+            if epoch > (patience - 1) :
+                print(stop_flag)
+                print(results['val_loss'][(-1 * (patience + 1)):], results['val_loss'][(-1 * (patience + 1))])
+
+                if min(results['val_loss'][(-1 * (patience + 1)):]) == results['val_loss'][(-1 * (patience + 1))]:
+                    stop_flag = True
+
+        # if stop_flag_overall and stop_flag_myloss and stop_flag_f1 and stop_flag :
+        if stop_flag :
             break
 
         dataloader.shuffle_data()
@@ -567,6 +596,10 @@ def main(applications, modelkey, driver, val_ratio, odometer, data, batch_size, 
         save_path = os.path.join(os.getcwd(), data, driver, str(odometer) + '_' + str(pre_sec), modelkey, 'WB_ML_' + str(learning_rate))
     elif loss == 'f1' :
         save_path = os.path.join(os.getcwd(), data, driver, str(odometer) + '_' + str(pre_sec), modelkey, 'f1_' + str(learning_rate))
+
+    else :
+        save_path = os.path.join(os.getcwd(), data, driver, str(odometer) + '_' + str(pre_sec), modelkey, str(loss) + '_' + str(batch_size) + '_' + str(learning_rate))
+
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
 
@@ -601,6 +634,14 @@ def main(applications, modelkey, driver, val_ratio, odometer, data, batch_size, 
                 # print(weights_path)
                 test_fs(dataloader, num_seq_img, average_path, weights_path)
 
+            else :
+                average_path = os.path.join(save_path, 'test_loss')
+                if not os.path.isdir(average_path):
+                    os.makedirs(average_path)
+                weights_path = os.path.join(save_path, 'weights', 'best_loss')
+                # print(weights_path)
+                test_fs(dataloader, num_seq_img, average_path, weights_path)
+
 
 if __name__ == '__main__' :
     gpu_limit(3)
@@ -615,14 +656,14 @@ if __name__ == '__main__' :
     modelkey = 'CAPNet'
     # modelkey = applications[2]
 
-    # normal, WB, ML, f1
-    loss = 'ML'
+    # normal, WB, ML, f1, softf1, WB_softf1, Wsoftf1
+    loss = 'WB_Wsoftf1'
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
-    driver = 'TaesanKim'
-    val_ratio = 0.2
-    # driver = 'GeesungOh'
-    # val_ratio = 0.3
+    # driver = 'TaesanKim'
+    # val_ratio = 0.2
+    driver = 'GeesungOh'
+    val_ratio = 0.3
     # driver = 'EuiseokJeong'
     # val_ratio = 0.4
 
@@ -633,7 +674,7 @@ if __name__ == '__main__' :
     data = 'front_image'
     # data = 'audio'
 
-    batch_size = 16
+    batch_size = 32
     learning_rate = 0.001
 
     pre_sec = 2
