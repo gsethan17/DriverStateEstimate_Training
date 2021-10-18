@@ -7,7 +7,7 @@ import numpy as np
 from dl_models import face_detector, get_capnet, get_application
 from CAPNet import get_new_model
 import tensorflow as tf
-from utils import get_feature, gpu_limit, get_input, weighted_loss, weighted_cross_entropy, cal_acc, weighted_myloss, my_loss, my_loss_val, weighted_f1, f1_loss_val, f1_loss, macro_soft_f1, WE_CE_softf1
+from utils import get_feature, gpu_limit, get_input, weighted_loss, weighted_cross_entropy, cal_acc, weighted_myloss, my_loss, my_loss_val, weighted_f1, f1_loss_val, f1_loss, macro_soft_f1, WE_CE_softf1, macro_double_soft_f1
 
 
 def train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path) :
@@ -199,6 +199,12 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
         LOSS = WE_CE_softf1
         VAL_LOSS = WE_CE_softf1
         stop_flag = False
+
+    elif loss_name == 'doublef1' :
+        LOSS = macro_double_soft_f1
+        VAL_LOSS = macro_double_soft_f1
+        stop_flag = False
+
 
     METRIC = f1_loss
     OPTIMIZER = tf.keras.optimizers.Adam(learning_rate=learning_rate)
@@ -656,8 +662,8 @@ if __name__ == '__main__' :
     modelkey = 'CAPNet'
     # modelkey = applications[2]
 
-    # normal, WB, ML, f1, softf1, WB_softf1, Wsoftf1
-    loss = 'WB_Wsoftf1'
+    # normal, WB, ML, f1, softf1, WB_softf1, Wsoftf1, doublef1
+    loss = 'doublef1'
 
     # GeesungOh, TaesanKim, EuiseokJeong, JoonghooPark
     # driver = 'TaesanKim'
