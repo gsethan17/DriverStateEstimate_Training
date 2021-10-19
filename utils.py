@@ -120,7 +120,7 @@ def f1_loss_val(trues, preds):
     return loss
 
 
-def f1_loss(trues, preds, type = 'majority') :
+def f1_loss(trues, preds, type = 'minority') :
     mt = np.zeros((4, 4))
 
     for t in range(len(trues)):
@@ -390,7 +390,7 @@ def weighted_cross_entropy(true, pred, label_weight) :
 
     return loss
 
-def weighted_loss(y_true, y_pred, weight_list):
+def weighted_loss(y_true, y_pred, weight_list = [1., 1., 1., 1.]):
     cce = tf.keras.losses.CategoricalCrossentropy()
     len_y = len(y_true)
     if not len_y == len(y_pred):

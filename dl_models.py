@@ -38,7 +38,19 @@ def get_application(modelkey, num_seq_image, dropout_rate=0.001) :
 
     return model
 
+def get_classifier(num_seq_image, dropout_rate) :
+    input_ = Input(shape=(num_seq_image, 512))
+    bn = BatchNormalization()(input_)
+    lstm = LSTM(256, input_shape=(num_seq_image, 512), dropout=dropout_rate)(bn)
 
+    do1 = Dropout(rate=dropout_rate)(lstm)
+    fo1 = Dense(256, activation='tanh')(do1)
+    fo2 = Dense(4, activation='softmax')(fo1)
+
+    cf_model = Model(inputs=input_, outputs=fo2)
+    print(cf_model.summary())
+
+    return cf_model
 
 def get_capnet(num_seq_image, dropout_rate) :
     model = ResNet34(cardinality=32, se='parallel_add')

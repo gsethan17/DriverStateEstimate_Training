@@ -47,8 +47,8 @@ if __name__ == '__main__' :
     num_seq_img = 6
 
     global driver
-    driver = 'GeesungOh'
-    # driver = 'TaesanKim'
+    # driver = 'GeesungOh'
+    driver = 'TaesanKim'
 
     global val_ratio
     val_ratio = 0.0
