@@ -352,6 +352,14 @@ def macro_double_soft_f1(y, y_hat, label_weights = [1., 1., 1., 1.]):
     macro_cost = tf.reduce_mean(cost)  # average on all labels
     return macro_cost
 
+def WE_CE_doublef1(true, pred, label_weight, n=2) :
+    w_ce = weighted_cross_entropy(true, pred, label_weight)
+    doublef1 = macro_double_soft_f1(true, pred, label_weight)
+
+    loss = (1/n)*w_ce + (1-(1/n))*doublef1
+
+    return loss
+
 def WE_CE_softf1(true, pred, label_weight) :
     w_ce = weighted_cross_entropy(true, pred, label_weight)
     softf1 = macro_soft_f1(true, pred, label_weight)

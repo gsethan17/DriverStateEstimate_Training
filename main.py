@@ -7,7 +7,7 @@ import numpy as np
 from dl_models import face_detector, get_capnet, get_application
 from CAPNet import get_new_model
 import tensorflow as tf
-from utils import get_feature, gpu_limit, get_input, weighted_loss, weighted_cross_entropy, cal_acc, weighted_myloss, my_loss, my_loss_val, weighted_f1, f1_loss_val, f1_loss, macro_soft_f1, WE_CE_softf1, macro_double_soft_f1
+from utils import get_feature, gpu_limit, get_input, weighted_loss, weighted_cross_entropy, cal_acc, weighted_myloss, my_loss, my_loss_val, weighted_f1, f1_loss_val, f1_loss, macro_soft_f1, WE_CE_softf1, macro_double_soft_f1, WE_CE_doublef1
 
 
 def train_fs_e2e(modelkey, dataloader, label_weight, epochs, learning_rate, num_seq_img, save_path) :
@@ -200,9 +200,14 @@ def train_fs(dataloader, label_weight, epochs, learning_rate, num_seq_img, save_
         VAL_LOSS = WE_CE_softf1
         stop_flag = False
 
-    elif loss_name == 'doublef1' :
+    elif loss_name == 'doublef1' or loss_name == 'WB_doublef1' :
         LOSS = macro_double_soft_f1
         VAL_LOSS = macro_double_soft_f1
+        stop_flag = False
+
+    elif loss_name == 'WB_doublef1' :
+        LOSS = WE_CE_doublef1
+        VAL_LOSS = WE_CE_doublef1
         stop_flag = False
 
 
@@ -669,19 +674,19 @@ if __name__ == '__main__' :
     # driver = 'TaesanKim'
     # val_ratio = 0.2
     driver = 'GeesungOh'
-    val_ratio = 0.3
+    # val_ratio = 0.3
     # driver = 'EuiseokJeong'
-    # val_ratio = 0.4
+    val_ratio = 0.4
 
     # 500, 800, 1000, 1500, 2000
-    odometer = 500
+    odometer = 1000
 
     # ['can', 'front_image', 'side_image', 'bio', 'audio']
     data = 'front_image'
     # data = 'audio'
 
-    batch_size = 32
-    learning_rate = 0.001
+    batch_size = 64
+    learning_rate = 0.0001
 
     pre_sec = 2
     image_size = 'large'
