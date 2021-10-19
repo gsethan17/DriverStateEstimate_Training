@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from dl_models import face_detector, crop_detection
 import tensorflow as tf
+import os
 
 def my_loss_val(trues, preds) :
     mt = np.zeros((4, 4))
@@ -579,3 +580,24 @@ def gpu_limit(GB) :
             print(e)
     else:
         print('GPU is not available')
+
+def save_img(x, serial, save_path) :
+    batch_size = x.shape[0]
+
+    for i in range(batch_size) :
+        idx = serial[i]
+        # print(x[i].shape, idx)
+
+        imgs = x[i]
+        save_dir = os.path.join(save_path, str(idx))
+        if not os.path.isdir(save_dir) :
+            os.makedirs(save_dir)
+
+        for j in range(imgs.shape[0]) :
+            img = imgs[j]
+            # print(img.shape)
+
+            save_name = os.path.join(save_dir, '{}.jpg'.format(j))
+            # print(save_name)
+            cv2.imwrite(save_name, img)
+            # print('saved')
