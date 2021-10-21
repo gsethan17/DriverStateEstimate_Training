@@ -34,6 +34,62 @@ def macro_soft_f1(y, y_hat):
 
     return macro_cost
 
+def cpr_value(y, y_hat):
+    """Compute the macro soft F1-score as a cost (average 1 - soft-F1 across all labels).
+    Use probability values instead of binary predictions.
+    This version uses the computation of soft-F1 for both positive and negative class for each label.
+
+    Args:
+        y (int32 Tensor): targets array of shape (BATCH_SIZE, N_LABELS)
+        y_hat (float32 Tensor): probability matrix from forward propagation of shape (BATCH_SIZE, N_LABELS)
+
+    Returns:
+        cost (scalar Tensor): value of the cost function for the batch
+    """
+    y = tf.cast(y, tf.float32)
+    y_hat = tf.cast(y_hat, tf.float32)
+    tp = tf.reduce_sum(y_hat * y, axis=0)
+    fp = tf.reduce_sum(y_hat * (1 - y), axis=0)
+    fn = tf.reduce_sum((1 - y_hat) * y, axis=0)
+    # tn = tf.reduce_sum((1 - y_hat) * (1 - y), axis=0)
+
+    precisions = tp / (tp + fp + 1e-16)
+    recalls = tp / (tp + fn + 1e-16)
+
+
+    cprs = tf.concat([recalls[:-1], [precisions[-1]]], axis=0)
+    cost = tf.reduce_mean(cprs)
+
+    return cost
+
+def cpr_loss(y, y_hat):
+    """Compute the macro soft F1-score as a cost (average 1 - soft-F1 across all labels).
+    Use probability values instead of binary predictions.
+    This version uses the computation of soft-F1 for both positive and negative class for each label.
+
+    Args:
+        y (int32 Tensor): targets array of shape (BATCH_SIZE, N_LABELS)
+        y_hat (float32 Tensor): probability matrix from forward propagation of shape (BATCH_SIZE, N_LABELS)
+
+    Returns:
+        cost (scalar Tensor): value of the cost function for the batch
+    """
+    y = tf.cast(y, tf.float32)
+    y_hat = tf.cast(y_hat, tf.float32)
+    tp = tf.reduce_sum(y_hat * y, axis=0)
+    fp = tf.reduce_sum(y_hat * (1 - y), axis=0)
+    fn = tf.reduce_sum((1 - y_hat) * y, axis=0)
+    # tn = tf.reduce_sum((1 - y_hat) * (1 - y), axis=0)
+
+    precisions = tp / (tp + fp + 1e-16)
+    recalls = tp / (tp + fn + 1e-16)
+
+
+    cprs = tf.concat([recalls[:-1], [precisions[-1]]], axis=0)
+    costs = 1 - cprs
+    cost = tf.reduce_mean(costs)
+
+    return cost
 
 def macro_double_soft_f1(y, y_hat):
     """Compute the macro soft F1-score as a cost (average 1 - soft-F1 across all labels).
@@ -53,6 +109,7 @@ def macro_double_soft_f1(y, y_hat):
     fp = tf.reduce_sum(y_hat * (1 - y), axis=0)
     fn = tf.reduce_sum((1 - y_hat) * y, axis=0)
     tn = tf.reduce_sum((1 - y_hat) * (1 - y), axis=0)
+
     soft_f1_class1 = 2 * tp / (2 * tp + fn + fp + 1e-16)
     soft_f1_class0 = 2 * tn / (2 * tn + fn + fp + 1e-16)
     cost_class1 = 1 - soft_f1_class1  # reduce 1 - soft-f1_class1 in order to increase soft-f1 on class 1
@@ -174,7 +231,7 @@ class Dataloader(Sequence) :
 
         return tf.convert_to_tensor(batch_x), tf.convert_to_tensor(batch_true)
 
-def train(train_loader, val_loader, w) :
+def train(train_loader, val_loader, w, loss_funtion, learning_rate) :
     model = get_classifier(6, 0.2)
 
     if loss_function == 'CE' :
@@ -185,8 +242,14 @@ def train(train_loader, val_loader, w) :
         LOSS = macro_soft_f1
     elif loss_function == 'DF1' :
         LOSS = macro_double_soft_f1
+    elif loss_function == 'CPR' :
+        LOSS = cpr_loss
     OPTIMIZER = tf.keras.optimizers.Adam(learning_rate)
-    METRIC = f1_loss
+
+    if loss_function == 'CPR' :
+        METRIC = cpr_value
+    else :
+        METRIC = f1_loss
 
     results = {}
     stop_flag = False
@@ -217,6 +280,8 @@ def train(train_loader, val_loader, w) :
 
         train_loader.on_epoch_end()
 
+        global total_val_Y
+        global total_val_Y_hat
 
         for i in range(len(val_loader)):
             val_x, val_y = val_loader[i]
@@ -224,25 +289,25 @@ def train(train_loader, val_loader, w) :
             pred = model(val_x, training=False)
 
             if i == 0 :
-                Y = val_y
-                Y_hat = pred
+                total_val_Y = val_y
+                total_val_Y_hat = pred
 
             else :
-                Y = np.vstack([Y, val_y])
-                Y_hat = np.vstack([Y_hat, pred])
+                total_val_Y = np.vstack([total_val_Y, val_y])
+                total_val_Y_hat = np.vstack([total_val_Y_hat, pred])
 
 
-        val_loss = LOSS(Y, Y_hat)
-        val_metric = METRIC(Y, Y_hat)
+        val_loss = LOSS(total_val_Y, total_val_Y_hat)
+        val_metric = METRIC(total_val_Y, total_val_Y_hat)
 
-        print('[INFO] {:>3} / {:>3} || Train : {:6.3f}, {:6.3f} || Validation : {:6.3f}, {:6.3f}'.format(
-                                                                        epoch + 1,
-                                                                        epochs,
-                                                                        train_loss,
-                                                                        train_metric,
-                                                                        val_loss,
-                                                                        val_metric
-                                                                        ))
+        # print('[INFO] {:>3} / {:>3} || Train : {:6.3f}, {:6.3f} || Validation : {:6.3f}, {:6.3f}'.format(
+        #                                                                 epoch + 1,
+        #                                                                 epochs,
+        #                                                                 train_loss,
+        #                                                                 train_metric,
+        #                                                                 val_loss,
+        #                                                                 val_metric
+        #                                                                 ))
 
 
         if epoch == 0 :
@@ -258,11 +323,11 @@ def train(train_loader, val_loader, w) :
 
 
         if results['v_loss'][-1] == min(results['v_loss']) :
-            weights_path = os.path.join(save_path, 'weights')
+            # weights_path = os.path.join(save_path, 'weights')
             stop_flag = False
-            if not os.path.isdir(weights_path) :
-                os.makedirs(weights_path)
-            model.save_weights(os.path.join(save_path, 'weights', 'best_weight'))
+            # if not os.path.isdir(weights_path) :
+            #     os.makedirs(weights_path)
+            # model.save_weights(os.path.join(save_path, 'weights', 'best_weight'))
 
         if epoch > (patience - 1) :
             if min(results['v_loss'][(-1 * (patience + 1)):]) == results['v_loss'][(-1 * (patience + 1))]:
@@ -274,9 +339,12 @@ def train(train_loader, val_loader, w) :
     df = pd.DataFrame(results)
     df.to_csv(os.path.join(save_path, 'train_results.csv'), index=False)
 
-    return model
+    return model, min(results['v_loss'])
 
 def test(model, test_loader, save_path) :
+    if not os.path.isdir(save_path):
+        os.makedirs(save_path)
+
     trues = np.array([], dtype='int64')
     preds = np.array([], dtype='int64')
 
@@ -288,14 +356,6 @@ def test(model, test_loader, save_path) :
 
         trues = np.concatenate([trues, np.argmax(test_y, axis=-1)], axis=0)
         preds = np.concatenate([preds, np.argmax(pred, axis=-1)], axis=0)
-
-        if i == 0:
-            Y = test_y
-            Y_hat = pred
-
-        else:
-            Y = np.vstack([Y, test_y])
-            Y_hat = np.vstack([Y_hat, pred])
 
 
     index_list = ['Angry', 'Surprise', 'Sad', 'Happy']
@@ -341,7 +401,7 @@ def get_results(df, save_path) :
         f1[index] = 2 * (precision[index] * recall[index]) / (precision[index] + recall[index] + 1e-16)
 
 
-    f = open(os.path.join(save_path, '{}.txt'.format(np.mean(list(f1.values())[:2]))), "w")
+    f = open(os.path.join(save_path, '{}.txt'.format(np.mean(list(recall.values())[:2]))), "w")
 
     write = 'tp :' + str(tp) + '\n' \
     + 'fp :' + str(fp) + '\n' \
@@ -349,6 +409,7 @@ def get_results(df, save_path) :
     + 'tn :'+ str(tn) + '\n' \
     + 'precision :'+ str(precision) + '\n' \
     + 'recall :'+ str(recall) + '\n' \
+    + 'Avg_reacll :' + str(np.mean(list(recall.values()))) + '\n' \
     + 'f1 :'+ str(f1) + '\n' \
     + 'f1_average :'+ str(np.mean(list(f1.values()))) + '\n' \
     + 'f1_minority :'+ str(np.mean(list(f1.values())[:2])) + '\n' \
@@ -359,7 +420,7 @@ def get_results(df, save_path) :
     f.write(write)
     f.close()
 
-def main(driver, random_seed, batch_size) :
+def get_data(driver, random_seed, batch_size) :
     random.seed(random_seed)
 
     label = load_labels(driver)
@@ -382,42 +443,64 @@ def main(driver, random_seed, batch_size) :
     valloader = Dataloader(val_list, label, batch_size)
     testloader = Dataloader(test_list, label, batch_size)
 
+    return trainloader, valloader, testloader, w
 
-    model = train(trainloader, valloader, w)
-    test(model, testloader, save_path)
+
+
+def iteration(driver, loss_function, save_path) :
+    flag = False
+
+    for random_seed in random_seeds :
+        for batch_size in batch_sizes :
+            for learning_rate in learning_rates :
+                train_loader, val_loader, test_loader, w = get_data(driver, random_seed, batch_size)
+
+                model, min_val_loss = train(train_loader, val_loader, w, loss_function, learning_rate)
+                print(driver, loss_function, random_seed, batch_size, learning_rate, min_val_loss)
+
+                if not flag :
+                    model_main = model
+                    min_val_main = min_val_loss
+                    flag = True
+
+                else :
+                    if min_val_loss < min_val_main :
+                        model_main = model
+                        min_val_main = min_val_loss
+                        save_path_test = os.path.join(save_path, str(batch_size) + '_' + str(learning_rate) + '_' + str(random_seed))
+
+                        weights_path = os.path.join(save_path, 'weights')
+                        if not os.path.isdir(weights_path) :
+                            os.makedirs(weights_path)
+                        model.save_weights(os.path.join(save_path, 'weights', 'best_weight'))
+
+    test(model_main, test_loader, save_path_test)
 
 
 if __name__ == '__main__' :
     drivers = ['G', 'T']
     val_ratio = 0.3
-    random_seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    random_seeds = [0, 1, 2, 3]
     loss_functions = ['CE', 'WCE', 'F1', 'DF1']
+    # loss_functions= ['CPR']
 
     global epochs
     epochs = 500
     batch_sizes = [16, 32, 64, 128, 256]
-    global learning_rate
+    global learning_rates
     learning_rates = [0.01, 0.001, 0.0001, 0.00001]
 
     global patience
     patience = 10
 
-    global save_path
-    global loss_function
+    for driver in drivers:
+        for loss_function in loss_functions:
+            save_path = os.path.join(os.getcwd(), 'fast_track',
+                                     driver + '_' + str(loss_function))
+            if not os.path.isdir(save_path):
+                os.makedirs(save_path)
 
-    for random_seed in random_seeds :
-        for batch_size in batch_sizes :
-            for learning_rate in learning_rates :
-                for driver in drivers :
-                    for loss_function in loss_functions :
-
-                        save_path = os.path.join(os.getcwd(), 'fast_track',
-                                                 driver + '_' + str(loss_function) + '_' + str(batch_size) + '_' + str(learning_rate),
-                                                 str(random_seed))
-                        if not os.path.isdir(save_path):
-                            os.makedirs(save_path)
-
-                        main(driver, random_seed, batch_size)
+            iteration(driver, loss_function, save_path)
 
 
 
