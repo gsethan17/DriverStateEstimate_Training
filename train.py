@@ -7,7 +7,7 @@ import random
 import tensorflow as tf
 from tensorflow.keras.utils import Sequence
 from dl_models import get_classifier
-from utils import f1_loss, weighted_loss
+from utils import f1_loss, weighted_loss, gpu_limit
 
 def macro_soft_f1(y, y_hat):
     """Compute the macro soft F1-score as a cost.
@@ -231,8 +231,8 @@ class Dataloader(Sequence) :
 
         return tf.convert_to_tensor(batch_x), tf.convert_to_tensor(batch_true)
 
-def train(train_loader, val_loader, w, loss_funtion, learning_rate) :
-    model = get_classifier(6, 0.2)
+def train(train_loader, val_loader, w, loss_function, learning_rate) :
+    model = get_classifier(6, 0.2, purpose)
 
     if loss_function == 'CE' :
         LOSS = weighted_loss
@@ -478,11 +478,15 @@ def iteration(driver, loss_function, save_path) :
 
 
 if __name__ == '__main__' :
+    gpu_limit(3)
+
     drivers = ['G', 'T']
     val_ratio = 0.3
     random_seeds = [0, 1, 2, 3]
-    loss_functions = ['CE', 'WCE', 'F1', 'DF1']
-    # loss_functions= ['CPR']
+    loss_functions = ['CE', 'WCE', 'F1', 'DF1', 'CPR']
+    # single or multi
+    global purpose
+    purpose = 'multi'
 
     global epochs
     epochs = 500
@@ -495,7 +499,7 @@ if __name__ == '__main__' :
 
     for driver in drivers:
         for loss_function in loss_functions:
-            save_path = os.path.join(os.getcwd(), 'fast_track',
+            save_path = os.path.join(os.getcwd(), 'fast_track', str(purpose),
                                      driver + '_' + str(loss_function))
             if not os.path.isdir(save_path):
                 os.makedirs(save_path)
