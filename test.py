@@ -133,23 +133,38 @@ def softmax(x):
     return f_x
 
 def get_threshold(trues, preds, path) :
+    shape = preds.shape[-1]
     thres = np.arange(0, 1.01, 0.01)
+    print(preds.shape)
+    print(shape)
 
-    f = open(os.path.join(path, 'threshold.txt'), 'w')
+    if shape == 3 :
+        f = open(os.path.join(path, 'threshold_minority.txt'), 'w')
+        labels = ['ad', 'es', 'sf']
+        names = ['Angry&Disgust', 'Exited&Surprised', 'Sad&Fatigue']
+    elif shape == 1 :
+        f = open(os.path.join(path, 'threshold_majority.txt'), 'w')
+        labels = ['hn']
+        names = ['Happy&Neutral']
+
     write = "label / threshold / f1 / precision / recall\n"
     f.write(write)
 
-    for i, label in enumerate(['ad', 'es', 'sf']) :
+    for i, label in enumerate(labels[:shape]) :
 
         recalls = []
         precisions = []
         f1s = []
 
-        tp = []
-        fp = []
-        hist_flag = False
+        positive = []
+        negative = []
 
         for thre in thres :
+
+            tp = []
+            fp = []
+            fn = []
+            tn = []
 
             tp_count = 0
             true_count = 0
@@ -171,19 +186,23 @@ def get_threshold(trues, preds, path) :
 
                 if true_flag and pred_flag :
                     tp_count += 1
+                    tp.append(preds[j][i])
 
-                if true_flag :
-                    if not hist_flag :
-                        tp.append(preds[j][i])
-                else :
-                    if not hist_flag :
-                        fp.append(preds[j][i])
+                if true_flag != True and pred_flag == True :
+                    fp.append(preds[j][i])
 
-            hist_flag = True
+                if true_flag == True and pred_flag != True :
+                    fn.append(preds[j][i])
+
+                if true_flag != True and pred_flag != True :
+                    tn.append(preds[j][i])
 
             recall = tp_count / (true_count + 1e-16)
             precision = tp_count / (pred_count + 1e-16)
             f1 = 2 * (precision * recall) / (precision + recall + 1e-16)
+
+            positive.append(tp + fn)
+            negative.append(fp + tn)
 
             recalls.append(recall)
             precisions.append(precision)
@@ -193,31 +212,34 @@ def get_threshold(trues, preds, path) :
         # print(max(precisions), precisions.index(max(precisions)))
         # print(max(f1s), f1s.index(max(f1s)))
 
-        idx = f1s.index(max(f1s))
+        if shape == 3 :
+            idx = f1s.index(max(f1s))
+        elif shape == 1 :
+            idx = precisions.index(max(precisions))
+        print(positive[idx], len(positive[idx]))
+        print(negative[idx], len(negative[idx]))
         # print(label, thres[idx], f1s[idx], precisions[idx], recalls[idx])
         write = label + '/' + str(round(thres[idx], 2)) + '/' + str(round(f1s[idx], 4)) + '/' + str(round(precisions[idx], 4)) + '/' + str(round(recalls[idx], 4)) + '\n'
         # write = "{} / {:.2f} / {:.3f} / {:.3f} / {:.3f}\n".format(label / thres[idx] / f1s[idx] / precisions[idx] / recalls[idx])
         f.write(write)
 
         plt.figure()
-        sns.distplot(tp, bins=30, label='TP', color='green')
-        sns.distplot(fp, bins=30, label='FP', color='red')
-        plt.axvline(thres[idx], 0, 0.8, linestyle='--', label='maximize the F1 Score', color='k')
+        sns.distplot(positive[idx], bins=30, label=names[i], color='green')
+        sns.distplot(negative[idx], bins=30, label='others', color='red')
+        # plt.axvline(thres[idx], 0, 0.8, linestyle='--', label='maximize the F1 Score', color='k')
+        plt.axvline(thres[idx], 0, 0.8, linestyle='--', color='k')
         plt.legend(prop={'size': 14})
         plt.xlim([-0.1, 1.1])
         plt.savefig(os.path.join(path, str(label) + '.png'))
         # plt.show()
 
-
-
     f.close()
-
 
 
 if __name__ == '__main__' :
     gpu_limit(3)
 
-    drivers = ['T']
+    drivers = ['T', 'G']
     batch_size = 16
 
     purpose = 'single'
@@ -232,6 +254,7 @@ if __name__ == '__main__' :
 
             trues, preds, names = test(model, testloader)
 
+            '''
             output = {}
 
             for label in test_dic.keys() :
@@ -252,10 +275,14 @@ if __name__ == '__main__' :
 
             with open(os.path.join(path, '0.5_recall.txt'), 'w') as file:
                 file.write(json.dumps(recall))
+            '''
 
             softmax_preds = softmax(preds[:, :-1])
 
             get_threshold(trues, softmax_preds, path)
+            # get_threshold(trues, preds[:, :-1], path)
+
+            # get_threshold(trues, preds[:, -1:], path)
 
             # break
 
