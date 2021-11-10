@@ -277,9 +277,29 @@ if __name__ == '__main__' :
                 file.write(json.dumps(recall))
             '''
 
-            softmax_preds = softmax(preds[:, :-1])
+            # softmax_preds = softmax(preds[:, :-1])
 
-            get_threshold(trues, softmax_preds, path)
+            # get_threshold(trues[:, :-1], softmax_preds, path)
+
+            flag = False
+            for i, true in enumerate(trues):
+                true = np.expand_dims(true, axis=0)
+                if np.argmax(true) != 3 :
+                    if not flag :
+                        sub_true = true[:, :-1]
+                        sub_pred = np.expand_dims(preds[i, :-1], axis=0)
+                        flag = True
+                    else :
+                        sub_true = np.concatenate([sub_true, true[:, :-1]], axis=0)
+                        sub_pred = np.concatenate([sub_pred, np.expand_dims(preds[i, :-1], axis=0)], axis=0)
+
+            path = os.path.join(path, 'onlyMinority')
+            if not os.path.isdir(path):
+                os.makedirs(path)
+
+            get_threshold(sub_true, sub_pred, path)
+
+
             # get_threshold(trues, preds[:, :-1], path)
 
             # get_threshold(trues, preds[:, -1:], path)
